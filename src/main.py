@@ -1,6 +1,6 @@
 import cv2
 from imutils import resize
-from motor_de_inferencia import Detector_de_rostros
+from motores_de_inferencia import Detector_de_rostros
 
 pColor = (0, 0, 255)  # bounding-rect color
 rectThinkness = 2

@@ -2,7 +2,7 @@
 MODELO=$1
 
 CARPETA_DE_MODELOS=$(pwd)/modelos
-LINK_MODELO="https://storage.openvinotoolkit.org/repositories/open_model_zoo/2021.4/models_bin/3"
+LINK_MODELO="https://storage.openvinotoolkit.org/repositories/open_model_zoo/2022.1/models_bin/3"
 
 if [ ! -f "$CARPETA_DE_MODELOS/$MODELO.xml"  ]; then
     echo "Descargando Modelo.. "

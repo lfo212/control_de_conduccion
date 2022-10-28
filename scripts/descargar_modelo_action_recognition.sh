@@ -2,8 +2,8 @@
 MODELO=$1
 
 CARPETA_DE_MODELOS=$(pwd)/modelos
-LINK_MODELO_ENCODER="https://storage.openvinotoolkit.org/repositories/open_model_zoo/2021.4/models_bin/3/$MODELO/$MODELO-encoder/FP32/$MODELO-encoder"
-LINK_MODELO_DECODER="https://storage.openvinotoolkit.org/repositories/open_model_zoo/2021.4/models_bin/3/$MODELO/$MODELO-decoder/FP32/$MODELO-decoder"
+LINK_MODELO_ENCODER="https://storage.openvinotoolkit.org/repositories/open_model_zoo/2022.1/models_bin/3/$MODELO/$MODELO-encoder/FP32/$MODELO-encoder"
+LINK_MODELO_DECODER="https://storage.openvinotoolkit.org/repositories/open_model_zoo/2022.1/models_bin/3/$MODELO/$MODELO-decoder/FP32/$MODELO-decoder"
 
 if [ ! -f "$CARPETA_DE_MODELOS/$MODELO/decoder/$MODELO-decoder.xml"  ]; then
     echo "Descargando Modelo.. "
