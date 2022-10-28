@@ -1,3 +1,5 @@
+import cv2
+
 class Imagen():
 
     def __init__(self, batch_size : int, number_of_channels : int, height : int, width : int):
@@ -26,6 +28,21 @@ class Imagen():
             "tl": (int(area["tl"][0] * width), int(area["tl"][1] * height)),
             "br": (int(area["br"][0] * width), int(area["br"][1] * height))
         }
+    @staticmethod
+    def obtener_imagen_rostro_recortado(frame, rostro):
+        xmin, ymin = rostro["tl"]
+        xmax, ymax = rostro["br"]
+        image = frame[ymin : ymax + 1, xmin : xmax + 1]
+        if image.any():
+            return cv2.resize(
+                image,
+                (
+                    xmax - xmin,
+                    ymax - ymin,
+                ),
+            )
+        else:
+            return frame
 
 class Rostro:
     def __init__(self, inference_result):

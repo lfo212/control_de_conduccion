@@ -2,9 +2,11 @@ import cv2
 import os
 import logging
 from abc import abstractmethod
-from numpy import ndarray
+from numpy import ndarray, uint8, fromfile, expand_dims
 from openvino.inference_engine import IECore
 from objetos import Imagen, Rostro
+from imutils import paths
+from scipy import spatial
 
 class Motor_de_inferencia:
 
@@ -37,32 +39,30 @@ class Motor_de_inferencia:
         else:
             self.log.error("Error al cargar red neuronal")
 
-    @abstractmethod
     def get_output_blob(self) -> ndarray:
-        pass
+        return next(iter(self.execution_net.outputs))
 
-    def procesar_frame(self, frame) -> dict:
+    def redimensionar_imagen(self, frame):
+        return cv2.dnn.blobFromImage(
+            frame, size=(self.image_prop.height, self.image_prop.width), ddepth=cv2.CV_8U
+        )
+
+    def procesar_frame(self, blob) -> dict:
         """[summary]
         :param frame: frame blob
         :type frame: numpy.ndarray
         :rtype: (bool, numpy.ndarray, str)
         """
-
-        blob = cv2.dnn.blobFromImage(
-            frame, size=(self.image_prop.height, self.image_prop.width), ddepth=cv2.CV_8U
-        )
         return self.execution_net.infer(inputs={self.input_blob: blob}).get(
             self.output_blob
         )
 
 class Detector_de_rostros(Motor_de_inferencia):
-
-    def get_output_blob(self) -> ndarray:
-        return next(iter(self.execution_net.outputs))
     
     def procesar_frame(self, frame):
         input_height, input_width, _ = frame.shape
-        self.rostro = Rostro(super().procesar_frame(frame)[0][0][0])
+        blob = self.redimensionar_imagen(frame)
+        self.rostro = Rostro(super().procesar_frame(blob)[0][0][0])
         if self.rostro.confidence < self.confidence_threshold:
             self.log.warning(f"Face detection less than {self.confidence_threshold}, accuracy {self.rostro.confidence}")
             return {}
@@ -72,6 +72,42 @@ class Detector_de_rostros(Motor_de_inferencia):
             return {}
 
         return self.rostro.procesar_resultado(input_width, input_height) 
+        
+class Identificador_de_rostros(Motor_de_inferencia):
+
+    def redimensionar_imagen(self, frame):
+        resized_frame = cv2.resize(frame, (self.image_prop.width, self.image_prop.height))
+
+        # reshape to network input shape
+        # Change data layout from HWC to CHW
+        return expand_dims(resized_frame.transpose(2, 0, 1), 0)
+
+    def procesar_frame(self, frame) -> list:
+        blob = self.redimensionar_imagen(frame)
+        return [x[0][0] for x in list(super().procesar_frame(blob)[0])]
+
+    def generar_base_de_datos_de_choferes(self, directorio_imagenes_choferes : str):
+        self.choferes_dict = {}
+        for image_path in paths.list_images(directorio_imagenes_choferes):
+            name = os.path.basename(image_path).split(".")[0]
+            if name.startswith("chofer_"):
+                name = name[len("chofer_"):]
+            name = name.replace("_", " ")
+            try:
+                imagen = cv2.imdecode(fromfile(image_path, dtype=uint8), cv2.IMREAD_COLOR)
+            except (IOError, cv2.error):
+                imagen = None
+                self.log.warning(f"Archivo invalido: {image_path}")
+            if imagen is not None:
+                self.choferes_dict[name] = self.procesar_frame(imagen)
+    
+    def obtener_nombre_conductor(self, frame):
+        new_vector = self.procesar_frame(frame)
+        for name, vector in self.choferes_dict.items():
+            result = 1 - spatial.distance.cosine(vector, new_vector)
+            if result >= self.confidence_threshold:
+                return name
+        return "Unknown"
         
         
 
