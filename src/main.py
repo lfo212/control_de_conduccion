@@ -20,12 +20,11 @@ def main():
     while success:
         rostro = detector_de_rostros.procesar_frame(img)
         if rostro:
-            print(rostro)
             cv2.rectangle(img, rostro["tl"], rostro["br"], pColor, rectThinkness)
-        showImg = resize(img, height=750)
+        showImg = resize(img, height=750, width=680)
         cv2.imshow("showImg", showImg)
         cv2.waitKey(1)
-        if cv2.waitKey(10) == 27:  # exit if Escape is hit
+        if cv2.waitKey(10) == 27:  # exit if Esc
             break
         success, img = vidcap.read()
     print("Programa terminado")
