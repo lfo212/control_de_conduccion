@@ -62,16 +62,20 @@ class Detector_de_rostros(Motor_de_inferencia):
     def procesar_frame(self, frame):
         input_height, input_width, _ = frame.shape
         blob = self.redimensionar_imagen(frame)
-        self.rostro = Rostro(super().procesar_frame(blob)[0][0][0])
+        self.rostro = Rostro.getInstance()
+        self.rostro.actualizar_atributos(super().procesar_frame(blob)[0][0][0])
         if self.rostro.confidence < self.confidence_threshold:
             self.log.warning(f"Face detection less than {self.confidence_threshold}, accuracy {self.rostro.confidence}")
-            return {}
+            self.rostro.nombre = "DESCONOCIDO"
+            self.rostro.rostro_detectado = False
 
         if self.rostro.id < 0:
             self.log.warning(f"Invalid image id {self.rostro.id}")
-            return {}
+            self.rostro.nombre = "DESCONOCIDO"
+            self.rostro.rostro_detectado = False
 
-        return self.rostro.procesar_resultado(input_width, input_height) 
+        self.rostro.redimensionar_posicion(input_width, input_height)
+        return self.rostro
         
 class Identificador_de_rostros(Motor_de_inferencia):
 
@@ -101,14 +105,10 @@ class Identificador_de_rostros(Motor_de_inferencia):
             if imagen is not None:
                 self.choferes_dict[name] = self.procesar_frame(imagen)
     
-    def obtener_nombre_conductor(self, frame):
+    def obtener_nombre_conductor(self, frame) -> str:
         new_vector = self.procesar_frame(frame)
         for name, vector in self.choferes_dict.items():
             result = 1 - spatial.distance.cosine(vector, new_vector)
             if result >= self.confidence_threshold:
                 return name
-        return "Unknown"
-        
-        
-
-    
+        return "DESCONOCIDO"

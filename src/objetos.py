@@ -30,8 +30,8 @@ class Imagen():
         }
     @staticmethod
     def obtener_imagen_rostro_recortado(frame, rostro):
-        xmin, ymin = rostro["tl"]
-        xmax, ymax = rostro["br"]
+        xmin, ymin = rostro.location["tl"]
+        xmax, ymax = rostro.location["br"]
         image = frame[ymin : ymax + 1, xmin : xmax + 1]
         if image.any():
             return cv2.resize(
@@ -45,7 +45,24 @@ class Imagen():
             return frame
 
 class Rostro:
-    def __init__(self, inference_result):
+
+    __shared_instance = None
+
+    @staticmethod
+    def getInstance():
+        """Static Access Method"""
+        if not Rostro.__shared_instance:
+            Rostro()
+        return Rostro.__shared_instance
+
+    def __init__(self):
+        if Rostro.__shared_instance:
+            raise Exception("This class is a singleton class !")
+        else:
+            self.nombre = "DESCONOCIDO"
+            Rostro.__shared_instance = self
+    
+    def actualizar_atributos(self, inference_result):
         self.id = inference_result[0]
         self.label = int(inference_result[1])
         self.confidence = inference_result[2]
@@ -53,14 +70,8 @@ class Rostro:
             "tl": [inference_result[3],inference_result[4]],
             "br": [inference_result[5], inference_result[6]]
             }
+        self.rostro_detectado = True
     
-    def procesar_resultado(self, frame_width, frame_height):
-
+    def redimensionar_posicion(self, frame_width, frame_height):
         self.location = Imagen.incrementar_area_por_porcentaje(self.location, 10)
         self.location = Imagen.obtener_posicion_en_imagen_original(self.location, frame_width, frame_height)
-        return {
-                "tl": self.location["tl"],
-                "br": self.location["br"],
-                "type": self.label,
-                "accuracy": float(self.confidence)
-            }

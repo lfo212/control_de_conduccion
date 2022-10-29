@@ -1,10 +1,10 @@
 import cv2
 from imutils import resize
 from motores_de_inferencia import Detector_de_rostros, Identificador_de_rostros
-from objetos import Imagen
+from objetos import Imagen, Rostro
 
-pColor = (0, 0, 255)  # bounding-rect color
-rectThinkness = 2
+RED = (0, 0, 255)  # bounding-rect color
+ancho_recta = 2
 
 dr_model_bin = "../modelos/face-detection-retail-0004/face-detection-retail-0004.bin"
 dr_model_xml = "../modelos/face-detection-retail-0004/face-detection-retail-0004.xml"
@@ -24,11 +24,21 @@ def main():
     success, img = vidcap.read()
     while success:
         rostro = detector_de_rostros.procesar_frame(img)
-        if rostro:
+        if rostro.rostro_detectado:
             imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(img, rostro)
-            nombre = identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
-            print(nombre)
-            cv2.rectangle(img, rostro["tl"], rostro["br"], pColor, rectThinkness)
+            if rostro.nombre == "DESCONOCIDO":
+                rostro.nombre = identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
+            cv2.rectangle(img, rostro.location["tl"], rostro.location["br"], RED, ancho_recta)
+            input_height, input_width, _ = img.shape
+            cv2.putText(
+                img,
+                rostro.nombre,
+                (int(input_width / 4), int(input_height / 12)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                3,
+                (255, 255, 255),
+                2,
+            )
 
         showImg = resize(img, height=750, width=680)
         cv2.imshow("showImg", showImg)
