@@ -64,15 +64,18 @@ class Detector_de_rostros(Motor_de_inferencia):
         blob = self.redimensionar_imagen(frame)
         self.rostro = Rostro.getInstance()
         self.rostro.actualizar_atributos(super().procesar_frame(blob)[0][0][0])
+        
         if self.rostro.confidence < self.confidence_threshold:
             self.log.warning(f"Face detection less than {self.confidence_threshold}, accuracy {self.rostro.confidence}")
             self.rostro.nombre = "DESCONOCIDO"
             self.rostro.rostro_detectado = False
+            return self.rostro
 
         if self.rostro.id < 0:
             self.log.warning(f"Invalid image id {self.rostro.id}")
             self.rostro.nombre = "DESCONOCIDO"
             self.rostro.rostro_detectado = False
+            return self.rostro
 
         self.rostro.redimensionar_posicion(input_width, input_height)
         return self.rostro
