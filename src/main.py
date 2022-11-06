@@ -31,6 +31,9 @@ def main():
     identificador_de_rostros = mi.Identificador_de_rostros(ir_model_xml, ir_model_bin, device, confidence_threshold)
     detector_de_rasgos_faciales = mi.Detector_de_rasgos_faciales(drf_model_xml, drf_model_bin, device, confidence_threshold)
     
+    show_face = True
+    show_name = True
+    show_facial_landmarks = True
     identificador_de_rostros.generar_base_de_datos_de_choferes(CHOFERES_PATH)
     vidcap = cv2.VideoCapture(VIDEO_PATH)
     success, img = vidcap.read()
@@ -42,25 +45,37 @@ def main():
                 rostro.nombre = identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
 
 
-            drf_results = detector_de_rasgos_faciales.procesar_frame(imagen_rostro_recortado, img.shape, rostro.location["tl"])
-            cv2.rectangle(img, rostro.location["tl"], rostro.location["br"], RED, ancho_recta)
+            drf_results = detector_de_rasgos_faciales.procesar_frame(imagen_rostro_recortado, rostro.location)
+            if show_face:
+                cv2.rectangle(img, rostro.location["tl"], rostro.location["br"], RED, ancho_recta)
             input_height, input_width, _ = img.shape
-            cv2.putText(
-                img,
-                rostro.nombre,
-                (int(input_width / 4), int(input_height / 12)),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                RED,
-                2,
-            )
-            for point in drf_results:
-                cv2.circle(img, (int(point[1]), int(point[0])), 1 + int(0.0012 * 64), (255, 0, 0), -1)
+            if show_name:
+                cv2.putText(
+                    img,
+                    rostro.nombre,
+                    (int(input_width / 4), int(input_height / 12)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    RED,
+                    2,
+                )
+            if show_facial_landmarks:
+                for point in drf_results:
+                    cv2.circle(img, (int(point[1]), int(point[0])), 1 + int(0.0012 * 64), RED, -1)
         showImg = resize(img, height=750, width=680)
         cv2.imshow("showImg", showImg)
         cv2.waitKey(1)
+        """
         if cv2.waitKey(10) == 27:  # exit if Esc
             break
+        if cv2.waitKey(10) == 97:
+            show_face = not show_face
+        if cv2.waitKey(10) == 115:
+            show_name = not show_name
+        if cv2.waitKey(10) == 100:
+            show_facial_landmarks = not show_facial_landmarks   
+        """
+
         success, img = vidcap.read()
     print("Programa terminado")
 

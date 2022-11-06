@@ -1,8 +1,8 @@
 import cv2
 import os
 import logging
-from abc import abstractmethod
-from numpy import ndarray, uint8, fromfile, expand_dims
+import numpy as np
+
 from openvino.inference_engine import IECore
 from objetos import Imagen, Rostro
 from imutils import paths
@@ -39,7 +39,7 @@ class Motor_de_inferencia:
         else:
             self.log.error("Error al cargar red neuronal")
 
-    def get_output_blob(self) -> ndarray:
+    def get_output_blob(self) -> np.ndarray:
         return next(iter(self.execution_net.outputs))
 
     def redimensionar_imagen(self, frame):
@@ -101,7 +101,7 @@ class Identificador_de_rostros(Motor_de_inferencia):
                 name = name[len("chofer_"):]
             name = name.replace("_", " ")
             try:
-                imagen = cv2.imdecode(fromfile(image_path, dtype=uint8), cv2.IMREAD_COLOR)
+                imagen = cv2.imdecode(np.fromfile(image_path, dtype=np.uint8), cv2.IMREAD_COLOR)
             except (IOError, cv2.error):
                 imagen = None
                 self.log.warning(f"Archivo invalido: {image_path}")
@@ -118,43 +118,37 @@ class Identificador_de_rostros(Motor_de_inferencia):
 
 class Detector_de_rasgos_faciales(Motor_de_inferencia):
 
-    def sign(self, number : float):
-        if number > 0:
-            return 1
-        elif number < 0:
-            return -1
-        else:
-            return 0
+    def smooth_curve(self, curve):
+        for index, point in enumerate(curve):
+            #if index and index < len(curve) - 1:
+            if index % 2 and index < len(curve) - 1:
+                x = curve[index - 1][1] + (curve[index + 1][1] - curve[index - 1][1]) / 2
+                y = curve[index - 1][0] + (curve[index + 1][0] - curve[index - 1][0]) / 2
+                #point[1] = (point[1] + x) / 2
+                point[1] = x
+                point[0] = y
+        return curve
 
-    def procesar_frame(self, face_frame, frame_shape, posicion_inicial):
-        frame_height, frame_width, _ = frame_shape
-        x_inicial = posicion_inicial[0]
-        y_inicial = posicion_inicial[1]
+    def procesar_frame(self, face_frame, location):
         drf_result = super().procesar_frame(face_frame)[0]
+        face_width = location["br"][0] - location["tl"][0]
+        face_height = location["br"][1] - location["tl"][1]
         position_points = []
         rows, colums = drf_result[0].shape
         for point in drf_result:
-            _value = -1
-            x_position = 0
-            y_position = 0
-            for x in range(colums):
-                for y in range(rows):
-                    if point[x][y] > _value:
-                        _value = point[x][y]
-                        x_position = x
-                        y_position = y 
-            if _value > 0:
-                position_points.append([x_position, y_position])
-            else:
-                position_points.append([-1,-1])
-        for index, coord in enumerate(position_points):
-            if 1 < coord[0] and coord[0] < colums - 1 and 1 < coord[1] and coord[1] < rows - 1:
-                diffFirst = drf_result[index][coord[0]+1][coord[1]] - drf_result[index][coord[0]-1][coord[1]]
-                diffSecond = drf_result[index][coord[0]][coord[1]+1] - drf_result[index][coord[0]][coord[1]-1]
-                coord[0] += self.sign(diffFirst) * 0.25
-                coord[1] += self.sign(diffSecond) * 0.25
-            coord[0] =  y_inicial + int(frame_width * coord[0] / self.image_prop.width)
-            coord[1] = x_inicial + int(frame_height * coord[1] / self.image_prop.height)
-        return position_points
+            coord = []
+            max_value_index = list(np.unravel_index(np.argmax(point, axis=None), point.shape))
+
+            coord.append(location["tl"][1] + max_value_index[0] * face_height / rows)
+            coord.append(location["tl"][0] + max_value_index[1] * face_width / colums)
+            position_points.append(coord)
+
+        self.margen_rostro = self.smooth_curve(position_points[:32])
+        self.cejas = position_points[33:51]
+        self.nariz = position_points[52:60]
+        self.ojo_derecho = position_points[61:68] + [position_points[-2]]
+        self.ojo_izquierdo = position_points[69:76] + [position_points[-1]]
+        self.boca = position_points[77:-2]
+        return self.nariz
 
 
