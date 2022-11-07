@@ -108,47 +108,50 @@ class Identificador_de_rostros(Motor_de_inferencia):
             if imagen is not None:
                 self.choferes_dict[name] = self.procesar_frame(imagen)
     
-    def obtener_nombre_conductor(self, frame) -> str:
-        new_vector = self.procesar_frame(frame)
-        for name, vector in self.choferes_dict.items():
-            result = 1 - spatial.distance.cosine(vector, new_vector)
-            if result >= self.confidence_threshold:
-                return name
-        return "DESCONOCIDO"
+    def obtener_nombre_conductor(self, frame):
+        rostro = Rostro.getInstance()
+        if rostro.nombre == "DESCONOCIDO":
+            new_vector = self.procesar_frame(frame)
+            for name, vector in self.choferes_dict.items():
+                result = 1 - spatial.distance.cosine(vector, new_vector)
+                if result >= self.confidence_threshold:
+                    rostro.nombre = name
+                    break
 
 class Detector_de_rasgos_faciales(Motor_de_inferencia):
 
     def smooth_curve(self, curve):
         for index, point in enumerate(curve):
-            #if index and index < len(curve) - 1:
             if index % 2 and index < len(curve) - 1:
                 x = curve[index - 1][1] + (curve[index + 1][1] - curve[index - 1][1]) / 2
                 y = curve[index - 1][0] + (curve[index + 1][0] - curve[index - 1][0]) / 2
-                #point[1] = (point[1] + x) / 2
                 point[1] = x
                 point[0] = y
         return curve
 
-    def procesar_frame(self, face_frame, location):
+    def procesar_frame(self, face_frame, rostro):
         drf_result = super().procesar_frame(face_frame)[0]
+        self.rostro = rostro
+        location = rostro.location
         face_width = location["br"][0] - location["tl"][0]
         face_height = location["br"][1] - location["tl"][1]
         position_points = []
         rows, colums = drf_result[0].shape
         for point in drf_result:
-            coord = []
-            max_value_index = list(np.unravel_index(np.argmax(point, axis=None), point.shape))
+            max_value_index = np.unravel_index(np.argmax(point, axis=None), point.shape)
+            position_points.append([
+                location["tl"][1] + max_value_index[0] * face_height / rows,
+                location["tl"][0] + max_value_index[1] * face_width / colums
+                ])
+        return position_points
 
-            coord.append(location["tl"][1] + max_value_index[0] * face_height / rows)
-            coord.append(location["tl"][0] + max_value_index[1] * face_width / colums)
-            position_points.append(coord)
-
-        self.margen_rostro = self.smooth_curve(position_points[:32])
-        self.cejas = position_points[33:51]
-        self.nariz = position_points[52:60]
-        self.ojo_derecho = position_points[61:68] + [position_points[-2]]
-        self.ojo_izquierdo = position_points[69:76] + [position_points[-1]]
-        self.boca = position_points[77:-2]
-        return self.nariz
+    def detectar_rasgos(self, face_frame):
+        position_points = self.procesar_frame(face_frame, Rostro.getInstance())
+        self.rostro.margen_rostro = self.smooth_curve(position_points[:32])
+        self.rostro.cejas = position_points[33:51]
+        self.rostro.nariz = position_points[52:60]
+        self.rostro.ojo_derecho = position_points[61:68] + [position_points[-2]]
+        self.rostro.ojo_izquierdo = position_points[69:76] + [position_points[-1]]
+        self.rostro.boca = position_points[77:-2]
 
 

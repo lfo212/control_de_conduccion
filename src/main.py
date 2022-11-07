@@ -37,18 +37,16 @@ def main():
     identificador_de_rostros.generar_base_de_datos_de_choferes(CHOFERES_PATH)
     vidcap = cv2.VideoCapture(VIDEO_PATH)
     success, img = vidcap.read()
+    rostro = Rostro.getInstance()
     while success:
-        rostro : Rostro = detector_de_rostros.procesar_frame(img)
+        input_height, input_width, _ = img.shape
+        detector_de_rostros.procesar_frame(img)
         if rostro.rostro_detectado:
-            imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(img, rostro)
-            if rostro.nombre == "DESCONOCIDO":
-                rostro.nombre = identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
-
-
-            drf_results = detector_de_rasgos_faciales.procesar_frame(imagen_rostro_recortado, rostro.location)
+            imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(img)
+            identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
+            detector_de_rasgos_faciales.detectar_rasgos(imagen_rostro_recortado)
             if show_face:
                 cv2.rectangle(img, rostro.location["tl"], rostro.location["br"], RED, ancho_recta)
-            input_height, input_width, _ = img.shape
             if show_name:
                 cv2.putText(
                     img,
@@ -60,7 +58,7 @@ def main():
                     2,
                 )
             if show_facial_landmarks:
-                for point in drf_results:
+                for point in rostro.obtener_posicion_rasgos_faciales():
                     cv2.circle(img, (int(point[1]), int(point[0])), 1 + int(0.0012 * 64), RED, -1)
         showImg = resize(img, height=750, width=680)
         cv2.imshow("showImg", showImg)
