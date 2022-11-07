@@ -1,43 +1,81 @@
 import cv2
 from imutils import resize
-from motores_de_inferencia import Detector_de_rostros, Identificador_de_rostros
-from objetos import Imagen
+import motores_de_inferencia as mi
+from objetos import Imagen, Rostro
 
-pColor = (0, 0, 255)  # bounding-rect color
-rectThinkness = 2
+RED = (0, 0, 255)  # bounding-rect color
+ancho_recta = 2
 
+# Modelo de deteccion de rostros
 dr_model_bin = "../modelos/face-detection-retail-0004/face-detection-retail-0004.bin"
 dr_model_xml = "../modelos/face-detection-retail-0004/face-detection-retail-0004.xml"
+
+# Modelo de identificacion de rostros
 ir_model_bin = "../modelos/face-reidentification-retail-0095/face-reidentification-retail-0095.bin"
 ir_model_xml = "../modelos/face-reidentification-retail-0095/face-reidentification-retail-0095.xml"
+
+# Modelo de deteccion de rasgos faciales
+drf_model_bin = "../modelos/facial-landmarks-98-detection-0001/facial-landmarks-98-detection-0001.bin"
+drf_model_xml = "../modelos/facial-landmarks-98-detection-0001/facial-landmarks-98-detection-0001.xml"
+
+
 CHOFERES_PATH = "../imagenes_rostros_conductores"
 VIDEO_PATH = 0
 device = "CPU"
-confidence_threshold = 0.8
+confidence_threshold = 0.6
 
 def main():
 
-    detector_de_rostros = Detector_de_rostros(dr_model_xml, dr_model_bin, device, confidence_threshold)
-    identificador_de_rostros = Identificador_de_rostros(ir_model_xml, ir_model_bin, device, confidence_threshold)
+    # Creamos los motores de inferencia
+    detector_de_rostros = mi.Detector_de_rostros(dr_model_xml, dr_model_bin, device, confidence_threshold)
+    identificador_de_rostros = mi.Identificador_de_rostros(ir_model_xml, ir_model_bin, device, confidence_threshold)
+    detector_de_rasgos_faciales = mi.Detector_de_rasgos_faciales(drf_model_xml, drf_model_bin, device, confidence_threshold)
+    
+    show_face = True
+    show_name = True
+    show_facial_landmarks = True
     identificador_de_rostros.generar_base_de_datos_de_choferes(CHOFERES_PATH)
     vidcap = cv2.VideoCapture(VIDEO_PATH)
     success, img = vidcap.read()
+    rostro = Rostro.getInstance()
     while success:
-        rostro = detector_de_rostros.procesar_frame(img)
-        if rostro:
-            imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(img, rostro)
-            nombre = identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
-            print(nombre)
-            cv2.rectangle(img, rostro["tl"], rostro["br"], pColor, rectThinkness)
-
+        input_height, input_width, _ = img.shape
+        detector_de_rostros.procesar_frame(img)
+        if rostro.rostro_detectado:
+            imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(img)
+            identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
+            detector_de_rasgos_faciales.detectar_rasgos(imagen_rostro_recortado)
+            if show_face:
+                cv2.rectangle(img, rostro.location["tl"], rostro.location["br"], RED, ancho_recta)
+            if show_name:
+                cv2.putText(
+                    img,
+                    rostro.nombre,
+                    (int(input_width / 4), int(input_height / 12)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    RED,
+                    2,
+                )
+            if show_facial_landmarks:
+                for point in rostro.obtener_posicion_rasgos_faciales():
+                    cv2.circle(img, (int(point[1]), int(point[0])), 1 + int(0.0012 * 64), RED, -1)
         showImg = resize(img, height=750, width=680)
         cv2.imshow("showImg", showImg)
         cv2.waitKey(1)
+        """
         if cv2.waitKey(10) == 27:  # exit if Esc
             break
+        if cv2.waitKey(10) == 97:
+            show_face = not show_face
+        if cv2.waitKey(10) == 115:
+            show_name = not show_name
+        if cv2.waitKey(10) == 100:
+            show_facial_landmarks = not show_facial_landmarks   
+        """
+
         success, img = vidcap.read()
     print("Programa terminado")
-
 
 if __name__ == "__main__":
     main()
