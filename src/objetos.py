@@ -1,6 +1,6 @@
 import cv2
 
-class Imagen():
+class Imagen:
 
     def __init__(self, batch_size : int, number_of_channels : int, height : int, width : int):
         self.batch_size = batch_size

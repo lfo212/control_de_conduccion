@@ -26,15 +26,17 @@ class Motor_de_inferencia:
         # Load OpenVINO model
         _neural_net = self.ie_core.read_network(model=model_xml, weights=model_bin)
         if _neural_net:
-            self.input_blob = next(iter(_neural_net.input_info))
+            # input_info: A dictionary that maps input layer names to InputInfoPtr objects
+            # InputInfoPtr: This class contains information about each input of the network
+            self.input_blob_prop = next(iter(_neural_net.input_info))
             _neural_net.batch_size = 1
             self.execution_net = self.ie_core.load_network(
                 network=_neural_net, device_name=device.upper()
             )
-            self.output_blob = self.get_output_blob()
+            self.output_blob_prop = self.get_output_blob()
 
             self.image_prop = Imagen(*_neural_net.input_info[
-                self.input_blob
+                self.input_blob_prop
             ].input_data.shape)
         else:
             self.log.error("Error al cargar red neuronal")
@@ -54,8 +56,8 @@ class Motor_de_inferencia:
         :rtype: (bool, numpy.ndarray, str)
         """
         self.blob = self.redimensionar_imagen(frame)
-        return self.execution_net.infer(inputs={self.input_blob: self.blob}).get(
-            self.output_blob
+        return self.execution_net.infer(inputs={self.input_blob_prop: self.blob}).get(
+            self.output_blob_prop
         )
 
 class Detector_de_rostros(Motor_de_inferencia):
@@ -109,18 +111,18 @@ class Identificador_de_rostros(Motor_de_inferencia):
                 self.choferes_dict[name] = self.procesar_frame(imagen)
     
     def obtener_nombre_conductor(self, frame):
-        rostro = Rostro.getInstance()
-        if rostro.nombre == "DESCONOCIDO":
+        self.rostro = Rostro.getInstance()
+        if self.rostro.nombre == "DESCONOCIDO":
             new_vector = self.procesar_frame(frame)
             for name, vector in self.choferes_dict.items():
                 result = 1 - spatial.distance.cosine(vector, new_vector)
                 if result >= self.confidence_threshold:
-                    rostro.nombre = name
+                    self.rostro.nombre = name
                     break
 
 class Detector_de_rasgos_faciales(Motor_de_inferencia):
 
-    def smooth_curve(self, curve):
+    def suavizar_curva(self, curve):
         for index, point in enumerate(curve):
             if index % 2 and index < len(curve) - 1:
                 x = curve[index - 1][1] + (curve[index + 1][1] - curve[index - 1][1]) / 2
@@ -147,7 +149,7 @@ class Detector_de_rasgos_faciales(Motor_de_inferencia):
 
     def detectar_rasgos(self, face_frame):
         position_points = self.procesar_frame(face_frame, Rostro.getInstance())
-        self.rostro.margen_rostro = self.smooth_curve(position_points[:32])
+        self.rostro.margen_rostro = self.suavizar_curva(position_points[:32])
         self.rostro.cejas = position_points[33:51]
         self.rostro.nariz = position_points[52:60]
         self.rostro.ojo_derecho = position_points[61:68] + [position_points[-2]]
