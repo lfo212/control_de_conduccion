@@ -33,7 +33,7 @@ class Motor_de_inferencia:
             self.execution_net = self.ie_core.load_network(
                 network=_neural_net, device_name=device.upper()
             )
-            self.output_blob_prop = self.get_output_blob()
+            self.output_blob_prop = self.get_output_blob_prop()
 
             self.image_prop = Imagen(*_neural_net.input_info[
                 self.input_blob_prop
@@ -41,7 +41,7 @@ class Motor_de_inferencia:
         else:
             self.log.error("Error al cargar red neuronal")
 
-    def get_output_blob(self) -> np.ndarray:
+    def get_output_blob_prop(self) -> list:
         return next(iter(self.execution_net.outputs))
 
     def redimensionar_imagen(self, frame):
@@ -49,16 +49,22 @@ class Motor_de_inferencia:
             frame, size=(self.image_prop.height, self.image_prop.width), ddepth=cv2.CV_8U
         )
 
-    def procesar_frame(self, frame) -> dict:
+    def procesar_frame(self, frame):
         """[summary]
         :param frame: frame blob
         :type frame: numpy.ndarray
         :rtype: (bool, numpy.ndarray, str)
         """
         self.blob = self.redimensionar_imagen(frame)
-        return self.execution_net.infer(inputs={self.input_blob_prop: self.blob}).get(
-            self.output_blob_prop
-        )
+        inference_result = self.execution_net.infer(inputs={self.input_blob_prop: self.blob})
+        if type(self.output_blob_prop) == list:
+            return [inference_result.get(prop) for prop in self.output_blob_prop]
+        else:
+            return inference_result.get(
+                self.output_blob_prop
+            )
+
+    #def obtener_resultados()
 
 class Detector_de_rostros(Motor_de_inferencia):
     
@@ -156,4 +162,29 @@ class Detector_de_rasgos_faciales(Motor_de_inferencia):
         self.rostro.ojo_izquierdo = position_points[69:76] + [position_points[-1]]
         self.rostro.boca = position_points[77:-2]
 
+class Detector_posicion_cabeza(Motor_de_inferencia):
+    def conductor_distraido(self):
+        if abs(self.rostro.yaw_angle) > 30 or abs(self.rostro.pitch_angle) > 30:
+            return True
+        return False
 
+    def distraccion_critica(self):
+        ret = False
+        if self.conductor_distraido():
+            self.rostro.contador_distracciones += 1
+            if self.rostro.contador_distracciones >= self.rostro.umbral_de_distraccion_critico:
+                ret = True
+        else:
+            self.rostro.contador_distracciones = 0
+        return ret
+
+    def get_output_blob_prop(self) -> list:
+        return list(self.execution_net.outputs.keys())
+
+    def procesar_frame(self, frame):
+        self.rostro.pitch_angle, self.rostro.roll_angle, self.rostro.yaw_angle = super().procesar_frame(frame)
+
+    def detectar_angulos_de_posicion(self, frame):
+        self.rostro = Rostro.getInstance()
+        self.procesar_frame(frame)
+        self.rostro.distraccion_critica = self.distraccion_critica()
