@@ -1,0 +1,15 @@
+{
+	"dr_model_bin"         : "modelos/face-detection-retail-0004/face-detection-retail-0004.bin",
+	"dr_model_xml"         : "modelos/face-detection-retail-0004/face-detection-retail-0004.xml",
+	"ir_model_bin"         : "modelos/face-reidentification-retail-0095/face-reidentification-retail-0095.bin",
+	"ir_model_xml"         : "modelos/face-reidentification-retail-0095/face-reidentification-retail-0095.xml",
+	"drf_model_bin"        : "modelos/facial-landmarks-98-detection-0001/facial-landmarks-98-detection-0001.bin",
+	"drf_model_xml"        : "modelos/facial-landmarks-98-detection-0001/facial-landmarks-98-detection-0001.xml",
+	"dpc_model_bin"        : "modelos/head-pose-estimation-adas-0001/head-pose-estimation-adas-0001.bin",
+	"dpc_model_xml"        : "modelos/head-pose-estimation-adas-0001/head-pose-estimation-adas-0001.xml",
+	"drivers_photos"       : "imagenes_rostros_conductores",
+	"video_input"          : 0,
+	"device"               : "CPU",
+	"confidence_threshold" : 0.6,
+	"ancho_recta"          : 2
+}

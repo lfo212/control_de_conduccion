@@ -1,48 +1,55 @@
 import cv2
-from imutils import resize
 import motores_de_inferencia as mi
 from objetos import Imagen, Rostro, COLORS
+from imutils import resize
+from json import load
 
-
-ancho_recta = 2
+#ancho_recta = 2
 
 # Modelo de deteccion de rostros
-dr_model_bin = "../modelos/face-detection-retail-0004/face-detection-retail-0004.bin"
-dr_model_xml = "../modelos/face-detection-retail-0004/face-detection-retail-0004.xml"
+#dr_model_bin = "modelos/face-detection-retail-0004/face-detection-retail-0004.bin"
+#dr_model_xml = "modelos/face-detection-retail-0004/face-detection-retail-0004.xml"
 
 # Modelo de identificacion de rostros
-ir_model_bin = "../modelos/face-reidentification-retail-0095/face-reidentification-retail-0095.bin"
-ir_model_xml = "../modelos/face-reidentification-retail-0095/face-reidentification-retail-0095.xml"
+#ir_model_bin = "modelos/face-reidentification-retail-0095/face-reidentification-retail-0095.bin"
+#ir_model_xml = "modelos/face-reidentification-retail-0095/face-reidentification-retail-0095.xml"
 
 # Modelo de deteccion de rasgos faciales
-drf_model_bin = "../modelos/facial-landmarks-98-detection-0001/facial-landmarks-98-detection-0001.bin"
-drf_model_xml = "../modelos/facial-landmarks-98-detection-0001/facial-landmarks-98-detection-0001.xml"
+#drf_model_bin = "modelos/facial-landmarks-98-detection-0001/facial-landmarks-98-detection-0001.bin"
+#drf_model_xml = "modelos/facial-landmarks-98-detection-0001/facial-landmarks-98-detection-0001.xml"
 
 # Modelo de deteccion de posicion cabeza
-dpc_model_bin = "../modelos/head-pose-estimation-adas-0001/head-pose-estimation-adas-0001.bin"
-dpc_model_xml = "../modelos/head-pose-estimation-adas-0001/head-pose-estimation-adas-0001.xml"
+#dpc_model_bin = "modelos/head-pose-estimation-adas-0001/head-pose-estimation-adas-0001.bin"
+#dpc_model_xml = "modelos/head-pose-estimation-adas-0001/head-pose-estimation-adas-0001.xml"
 
 
-CHOFERES_PATH = "../imagenes_rostros_conductores"
-VIDEO_PATH = 0
-device = "CPU"
-confidence_threshold = 0.6
+#CHOFERES_PATH = "imagenes_rostros_conductores"
+#VIDEO_PATH = 0
+#device = "CPU"
+#confidence_threshold = 0.6
 
 def main():
 
+    configs = {}
+    # Cargamod configuraciones de json
+    with open("config.json") as configs_file:
+        configs = load(configs_file)
+    device = configs["device"]
+    confidence_threshold = configs["confidence_threshold"]
+
     # Creamos los motores de inferencia
-    detector_de_rostros = mi.Detector_de_rostros(dr_model_xml, dr_model_bin, device, confidence_threshold)
-    identificador_de_rostros = mi.Identificador_de_rostros(ir_model_xml, ir_model_bin, device, confidence_threshold)
-    detector_de_rasgos_faciales = mi.Detector_de_rasgos_faciales(drf_model_xml, drf_model_bin, device, confidence_threshold)
-    detector_posicion_cabeza = mi.Detector_posicion_cabeza(dpc_model_xml, dpc_model_bin, device, confidence_threshold)
+    detector_de_rostros = mi.Detector_de_rostros(configs["dr_model_xml"], configs["dr_model_bin"], device, confidence_threshold)
+    identificador_de_rostros = mi.Identificador_de_rostros(configs["ir_model_xml"], configs["ir_model_bin"], device, confidence_threshold)
+    detector_de_rasgos_faciales = mi.Detector_de_rasgos_faciales(configs["drf_model_xml"], configs["drf_model_bin"], device, confidence_threshold)
+    detector_posicion_cabeza = mi.Detector_posicion_cabeza(configs["dpc_model_xml"], configs["dpc_model_bin"], device, confidence_threshold)
     
     show_face = True
     show_name = True
     show_rasgos_faciales = True
     show_posicion_cabeza = True
     
-    identificador_de_rostros.generar_base_de_datos_de_choferes(CHOFERES_PATH)
-    vidcap = cv2.VideoCapture(VIDEO_PATH)
+    identificador_de_rostros.generar_base_de_datos_de_choferes(configs["drivers_photos"])
+    vidcap = cv2.VideoCapture(configs["video_input"])
     success, img = vidcap.read()
     rostro = Rostro.getInstance()
     while success:
@@ -60,7 +67,7 @@ def main():
                     rostro.location["tl"], 
                     rostro.location["br"], 
                     color, 
-                    ancho_recta
+                    configs["ancho_recta"]
                 )
             if show_name:
                 cv2.putText(
