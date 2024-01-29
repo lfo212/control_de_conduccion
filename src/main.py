@@ -106,7 +106,6 @@ def main():
         showImg = resize(img, height=750, width=680)
         cv2.imshow("showImg", showImg)
         cv2.waitKey(1)
-        """
         if cv2.waitKey(10) == 27:  # exit if Esc
             break
         if cv2.waitKey(10) == 97:
@@ -115,7 +114,6 @@ def main():
             show_name = not show_name
         if cv2.waitKey(10) == 100:
             show_facial_landmarks = not show_facial_landmarks   
-        """
 
         success, img = vidcap.read()
     print("Programa terminado")
