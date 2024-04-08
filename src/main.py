@@ -4,30 +4,6 @@ from objetos import Frame, Imagen, Rostro, COLORS
 from imutils import resize
 from json import load
 
-#ancho_recta = 2
-
-# Modelo de deteccion de rostros
-#dr_model_bin = "modelos/face-detection-retail-0004/face-detection-retail-0004.bin"
-#dr_model_xml = "modelos/face-detection-retail-0004/face-detection-retail-0004.xml"
-
-# Modelo de identificacion de rostros
-#ir_model_bin = "modelos/face-reidentification-retail-0095/face-reidentification-retail-0095.bin"
-#ir_model_xml = "modelos/face-reidentification-retail-0095/face-reidentification-retail-0095.xml"
-
-# Modelo de deteccion de rasgos faciales
-#drf_model_bin = "modelos/facial-landmarks-98-detection-0001/facial-landmarks-98-detection-0001.bin"
-#drf_model_xml = "modelos/facial-landmarks-98-detection-0001/facial-landmarks-98-detection-0001.xml"
-
-# Modelo de deteccion de posicion cabeza
-#dpc_model_bin = "modelos/head-pose-estimation-adas-0001/head-pose-estimation-adas-0001.bin"
-#dpc_model_xml = "modelos/head-pose-estimation-adas-0001/head-pose-estimation-adas-0001.xml"
-
-
-#CHOFERES_PATH = "imagenes_rostros_conductores"
-#VIDEO_PATH = 0
-#device = "CPU"
-#confidence_threshold = 0.6
-
 def main():
 
     configs = {}
@@ -43,6 +19,7 @@ def main():
     detector_de_rasgos_faciales = mi.Detector_de_rasgos_faciales(configs["drf_model_xml"], configs["drf_model_bin"], device, confidence_threshold)
     detector_posicion_cabeza = mi.Detector_posicion_cabeza(configs["dpc_model_xml"], configs["dpc_model_bin"], device, confidence_threshold)
     
+    #Determinamos la visibilidad de las detecciones
     show_face = configs["show_face"]
     show_name = configs["show_name"]
     show_rasgos_faciales = configs["show_rasgos_faciales"]
@@ -55,7 +32,6 @@ def main():
     rostro = Rostro.getInstance()
     while success:
         input_height, input_width, _ = img.shape
-        font_scale = (input_width * 0.4) / 640
         detector_de_rostros.procesar_frame(img)
         if rostro.rostro_detectado:
             imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(img)

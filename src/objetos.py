@@ -10,7 +10,7 @@ class Frame:
         self.video_cap: tuple = cv2.VideoCapture(video_input)
         self.fps: int = 0
         self.fps_timestamp: int = 0
-        self.counter = 0
+        self.counter: int = 0
 
     def new_frame(self) -> tuple:
         self.update_fps()
