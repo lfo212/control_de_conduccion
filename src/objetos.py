@@ -2,8 +2,27 @@ import cv2
 import math
 import numpy as np
 
+from time import time
 from enum import Enum
 
+class Frame:
+    def __init__(self, video_input: str):
+        self.video_cap: tuple = cv2.VideoCapture(video_input)
+        self.fps: int = 0
+        self.fps_timestamp: int = 0
+        self.counter: int = 0
+
+    def new_frame(self) -> tuple:
+        self.update_fps()
+        return self.video_cap.read()
+    def update_fps(self) -> None:
+        curr_timestamp = int(time())
+        if curr_timestamp > self.fps_timestamp:
+            self.fps_timestamp = curr_timestamp
+            self.fps = self.counter
+            self.counter = 0
+        else:
+            self.counter += 1
 class COLORS(Enum):
     BLUE  = (255,0,0)
     GREEN = (0,255,0)
