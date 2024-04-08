@@ -1,6 +1,6 @@
 import cv2
 import motores_de_inferencia as mi
-from objetos import Imagen, Rostro, COLORS
+from objetos import Frame, Imagen, Rostro, COLORS
 from imutils import resize
 from json import load
 
@@ -43,17 +43,19 @@ def main():
     detector_de_rasgos_faciales = mi.Detector_de_rasgos_faciales(configs["drf_model_xml"], configs["drf_model_bin"], device, confidence_threshold)
     detector_posicion_cabeza = mi.Detector_posicion_cabeza(configs["dpc_model_xml"], configs["dpc_model_bin"], device, confidence_threshold)
     
-    show_face = True
-    show_name = True
-    show_rasgos_faciales = True
-    show_posicion_cabeza = True
+    show_face = configs["show_face"]
+    show_name = configs["show_name"]
+    show_rasgos_faciales = configs["show_rasgos_faciales"]
+    show_posicion_cabeza = configs["show_posicion_cabeza"]
+    show_fps = configs["show_fps"]
     
     identificador_de_rostros.generar_base_de_datos_de_choferes(configs["drivers_photos"])
-    vidcap = cv2.VideoCapture(configs["video_input"])
-    success, img = vidcap.read()
+    frame = Frame(configs["video_input"])
+    success, img = frame.new_frame()
     rostro = Rostro.getInstance()
     while success:
         input_height, input_width, _ = img.shape
+        font_scale = (input_width * 0.4) / 640
         detector_de_rostros.procesar_frame(img)
         if rostro.rostro_detectado:
             imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(img)
@@ -101,6 +103,16 @@ def main():
                     COLORS.RED.value,
                     2,
                 )
+            if show_fps:
+                cv2.putText(
+                    img,
+                    f"FPS: {frame.fps}",
+                    (10, input_height - 50),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    COLORS.GREEN.value,
+                    2,
+                )
 
 
         showImg = resize(img, height=750, width=680)
@@ -115,7 +127,7 @@ def main():
         if cv2.waitKey(10) == 100:
             show_facial_landmarks = not show_facial_landmarks   
 
-        success, img = vidcap.read()
+        success, img = frame.new_frame()
     print("Programa terminado")
 
 if __name__ == "__main__":
