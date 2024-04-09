@@ -3,9 +3,11 @@ import motores_de_inferencia as mi
 from objetos import Frame, Imagen, Rostro, COLORS
 from imutils import resize
 from json import load
+from logging import basicConfig, INFO
 
 def main():
 
+    basicConfig(level=INFO)
     configs = {}
     # Cargamod configuraciones de json
     with open("config.json") as configs_file:

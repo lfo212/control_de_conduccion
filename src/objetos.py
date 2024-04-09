@@ -116,13 +116,11 @@ class Rostro:
             self.center = []
             Rostro.__shared_instance = self
     
-    def actualizar_atributos(self, inference_result):
-        self.id = inference_result[0]
-        self.label = int(inference_result[1])
-        self.confidence = inference_result[2]
+    def actualizar_atributos(self, inference_result, image_prop):
+        self.confidence = inference_result[4]
         self.location = {
-            "tl": [inference_result[3],inference_result[4]],
-            "br": [inference_result[5], inference_result[6]]
+            "tl": [inference_result[0]/image_prop.width,inference_result[1]/image_prop.height],
+            "br": [inference_result[2]/image_prop.width,inference_result[3]/image_prop.height]
             }
         self.rostro_detectado = True
     

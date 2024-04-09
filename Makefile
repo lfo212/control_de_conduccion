@@ -1,6 +1,6 @@
 download_models:
 	sudo chmod 775 -R scripts
-	./scripts/descargar_modelo.sh face-detection-retail-0004
+	./scripts/descargar_modelo.sh face-detection-0206
 	./scripts/descargar_modelo.sh facial-landmarks-98-detection-0001
 	./scripts/descargar_modelo.sh head-pose-estimation-adas-0001
 	./scripts/descargar_modelo.sh face-reidentification-retail-0095

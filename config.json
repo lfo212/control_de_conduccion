@@ -1,6 +1,6 @@
 {
-	"dr_model_bin"         : "modelos/face-detection-retail-0004/face-detection-retail-0004.bin",
-	"dr_model_xml"         : "modelos/face-detection-retail-0004/face-detection-retail-0004.xml",
+	"dr_model_bin"         : "modelos/face-detection-0206/face-detection-0206.bin",
+	"dr_model_xml"         : "modelos/face-detection-0206/face-detection-0206.xml",
 	"ir_model_bin"         : "modelos/face-reidentification-retail-0095/face-reidentification-retail-0095.bin",
 	"ir_model_xml"         : "modelos/face-reidentification-retail-0095/face-reidentification-retail-0095.xml",
 	"drf_model_bin"        : "modelos/facial-landmarks-98-detection-0001/facial-landmarks-98-detection-0001.bin",

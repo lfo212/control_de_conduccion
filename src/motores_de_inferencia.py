@@ -63,24 +63,15 @@ class Motor_de_inferencia:
             return inference_result.get(
                 self.output_blob_prop
             )
-
-    #def obtener_resultados()
-
 class Detector_de_rostros(Motor_de_inferencia):
     
     def procesar_frame(self, frame) -> Rostro:
         input_height, input_width, _ = frame.shape
         self.rostro = Rostro.getInstance()
-        self.rostro.actualizar_atributos(super().procesar_frame(frame)[0][0][0])
+        self.rostro.actualizar_atributos(super().procesar_frame(frame)[0], self.image_prop)
         
         if self.rostro.confidence < self.confidence_threshold:
             self.log.warning(f"Face detection less than {self.confidence_threshold}, accuracy {self.rostro.confidence}")
-            self.rostro.nombre = "DESCONOCIDO"
-            self.rostro.rostro_detectado = False
-            return self.rostro
-
-        if self.rostro.id < 0:
-            self.log.warning(f"Invalid image id {self.rostro.id}")
             self.rostro.nombre = "DESCONOCIDO"
             self.rostro.rostro_detectado = False
             return self.rostro
