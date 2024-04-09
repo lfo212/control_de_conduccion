@@ -1,5 +1,5 @@
 opencv-python
 imutils
-openvino==2022.1.0
+openvino==2024
 scipy
 numpy
