@@ -41,11 +41,12 @@ class Motor_de_inferencia:
             # IR v10 works with converted precisions (i64 -> i32)
             #assert input_tensor1.data.dtype == np.int32
             self.log.info(input_tensor1)
-            # self.output_blob_prop = self.get_output_blob_prop()
+            self.output_blob_prop = self.get_output_blob_prop()
 
             # self.image_prop = Imagen(*_model.input_info[
             #     self.input_blob_prop
             # ].input_data.shape)
+            self.image_prop = Imagen(*input_tensor1.shape)
         else:
             self.log.error("Error al cargar red neuronal")
 
@@ -187,7 +188,8 @@ class Detector_posicion_cabeza(Motor_de_inferencia):
         return ret
 
     def get_output_blob_prop(self) -> list:
-        return list(self.execution_net.outputs.keys())
+        #return list(self.compiled_model.outputs.keys())
+        return list(self.compiled_model.outputs)
 
     def procesar_frame(self, frame):
         self.rostro.pitch_angle, self.rostro.roll_angle, self.rostro.yaw_angle = super().procesar_frame(frame)
