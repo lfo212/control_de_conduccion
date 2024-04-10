@@ -42,10 +42,6 @@ class Motor_de_inferencia:
             #assert input_tensor1.data.dtype == np.int32
             self.log.info(input_tensor1)
             self.output_blob_prop = self.get_output_blob_prop()
-
-            # self.image_prop = Imagen(*_model.input_info[
-            #     self.input_blob_prop
-            # ].input_data.shape)
             self.image_prop = Imagen(*input_tensor1.shape)
         else:
             self.log.error("Error al cargar red neuronal")
@@ -66,6 +62,7 @@ class Motor_de_inferencia:
         """
         self.blob = self.redimensionar_imagen(frame)
         inference_result = self.infer_request.infer()#inputs={self.input_blob_prop: self.blob})
+        #self.log.info(f"{self.__class__.__name__}: {inference_result}")
         if type(self.output_blob_prop) == list:
             return [inference_result.get(prop) for prop in self.output_blob_prop]
         else:
@@ -80,7 +77,7 @@ class Detector_de_rostros(Motor_de_inferencia):
     def procesar_frame(self, frame) -> Rostro:
         input_height, input_width, _ = frame.shape
         self.rostro = Rostro.getInstance()
-        self.rostro.actualizar_atributos(super().procesar_frame(frame)[0][0][0])
+        self.rostro.actualizar_atributos(super().procesar_frame(frame)[0][0][1])
         
         if self.rostro.confidence < self.confidence_threshold:
             self.log.warning(f"Face detection less than {self.confidence_threshold}, accuracy {self.rostro.confidence}")

@@ -13,8 +13,8 @@
 	"confidence_threshold" : 0.6,
 	"ancho_recta"          : 2,
 	"show_face"			   : true,
-	"show_name"			   : true,
-	"show_rasgos_faciales" : true,
-	"show_posicion_cabeza" : true,
-	"show_fps"			   : true
+	"show_name"			   : false,
+	"show_rasgos_faciales" : false,
+	"show_posicion_cabeza" : false,
+	"show_fps"			   : false
 }

@@ -117,6 +117,7 @@ class Rostro:
             Rostro.__shared_instance = self
     
     def actualizar_atributos(self, inference_result):
+        print(f"RESULTADO: {inference_result}")
         self.id = inference_result[0]
         self.label = int(inference_result[1])
         self.confidence = inference_result[2]
