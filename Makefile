@@ -5,5 +5,6 @@ download_models:
 	./scripts/descargar_modelo.sh head-pose-estimation-adas-0001
 	./scripts/descargar_modelo.sh face-reidentification-retail-0095
 	./scripts/descargar_modelo_action_recognition.sh driver-action-recognition-adas-0002
+	./scripts/descargar_dlib_model.sh
 start: 	download_models
 	./scripts/start.sh
