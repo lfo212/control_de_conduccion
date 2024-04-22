@@ -84,6 +84,17 @@ class Imagen:
                 frame, (int(center[0]), int(center[1])), point, colores[index], 2
             )
         cv2.circle(frame, points[2], 3, COLORS.BLUE.value, 2)
+    
+    @staticmethod
+    def dibujar_puntos(points, frame):
+        for point in points:
+            cv2.circle(
+                frame, 
+                (int(point[0]), int(point[1])),
+                1 + int(0.0012 * 64), 
+                COLORS.GREEN.value, 
+                -1
+            )
 
 class Rostro():
 
@@ -127,7 +138,10 @@ class Rostro():
         self.rostro_detectado = True
     
     def actualizar_referencia(self, point):
-        return [self.location["tl"][0] + point[0], self.location["tl"] + point[1]]
+        return [self.location["tl"][0] + point[0], self.location["tl"][1] + point[1]]
+
+    def actualizar_referencia_lista(self, points):
+        return [self.actualizar_referencia(point) for point in points]
     
     def redimensionar_posicion(self, frame_width, frame_height):
         self.location = Imagen.incrementar_area_por_porcentaje(self.location, 10)
@@ -146,7 +160,7 @@ class Rostro():
 
     
     def obtener_posicion_rasgos_faciales(self):
-        return self.margen_rostro + self.nariz + self.ojo_izquierdo + self.ojo_derecho + self.boca
+        return self.ojo_izquierdo + self.ojo_derecho + self.boca
 
     def obtener_puntos_rotacion(self, height, width, face):
         # Head Pose

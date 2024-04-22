@@ -32,11 +32,11 @@ def main():
     rostro = Rostro.getInstance()
     while success:
         input_height, input_width, _ = img.shape
-        rostro = detector_de_rostros.procesar_frame(img)
+        detector_de_rostros.procesar_frame(img)
         if rostro.rostro_detectado:
             imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(img)
             #identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
-            img = detector_de_rasgos_faciales.detectar_rasgos(img, rostro)
+            detector_de_rasgos_faciales.detectar_rasgos(imagen_rostro_recortado)
             print(detector_de_rasgos_faciales.ret_message)
             #detector_posicion_cabeza.detectar_angulos_de_posicion(imagen_rostro_recortado)
             color = COLORS.RED.value if rostro.distraccion_critica else COLORS.GREEN.value
@@ -59,14 +59,9 @@ def main():
                     2,
                 )
             if show_rasgos_faciales:
-                for point in rostro.obtener_posicion_rasgos_faciales():
-                    cv2.circle(
-                        img, 
-                        (int(point[1]), int(point[0])),
-                        1 + int(0.0012 * 64), 
-                        color, 
-                        -1
-                    )
+                Imagen.dibujar_puntos(rostro.obtener_posicion_rasgos_faciales(), img)
+                detector_de_rasgos_faciales.dibujar_medidor_de_somnolencia(img)
+
             if show_posicion_cabeza:
                 puntos_de_rotacion = rostro.obtener_puntos_rotacion(input_height, input_width, rostro.location)
                 Imagen.dibujar_posicion_cabeza(puntos_de_rotacion, rostro.center, img)

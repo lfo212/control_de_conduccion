@@ -13,7 +13,7 @@
 	"ancho_recta"          : 2,
 	"show_face"			   : true,
 	"show_name"			   : false,
-	"show_rasgos_faciales" : false,
+	"show_rasgos_faciales" : true,
 	"show_posicion_cabeza" : false,
 	"show_fps"			   : true
 }

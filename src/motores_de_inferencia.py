@@ -186,22 +186,20 @@ class Detector_rasgos_faciales():
     def __init__(self, shape_predictor, device):
         """Constructor"""
         self.log = logging.getLogger("RASGOS_FACIALES")
-        self.device = device
-        self.eye_closed_count = 0
-        self.eye_closed_threshold = 10
-        self.eye_ar_thresh = 0.215
-        self.mouth_ar_thresh = 0.65
-        self.yawn_count = 0
-        self.yawn_threshold = 5
-        self.drowsiness = 0
-        self.first_blink = True
-        self.time_blink = 0.0
-        self.total_blinks = 0
-        self.total_yawns = 0
-        self.is_distracted = 0
+        self.contador_ojos_cerrados = 0
+        self.limite_ojos_cerrados = 10
+        self.limite_cierre_ojos = 0.215
+        self.limite_apertura_boca = 0.65
+        self.contador_bostezos = 0
+        self.limite_bostezos = 5
+        self.somnolencia = 0
+        self.primer_pestaneo = True
+        self.tiempo_pestaneo = 0.0
+        self.pestaneos_totales = 0
+        self.bostezos_totales = 0
         self.start_time = None
-        self.v_blink = 0
-        self.v_yawn = 0
+        self.v_pestaneo = 0
+        self.v_bostezo = 0
 
         if not os.path.exists(shape_predictor):
             raise FileNotFoundError(f"Shape predictor missing: {shape_predictor}")
@@ -209,70 +207,39 @@ class Detector_rasgos_faciales():
         self.predictor = dlib.shape_predictor(shape_predictor)
         self.detector = dlib.get_frontal_face_detector()
 
-    def detectar_rasgos(self, frame, rostro):
-        frame_copy = frame.copy()
-        shape = self.predictor(frame_copy, self.convert_to_dlib_rect(rostro))
+    def detectar_rasgos(self, rostro_recortado):
+        rostro = Rostro.getInstance()
+        shape = self.predictor(rostro_recortado, self.convert_to_dlib_rect(rostro_recortado))
         shape = face_utils.shape_to_np(shape)
-        self.log.debug(f"Number of points in shape: {len(shape)}")
-        for point in shape[36:60]:
-                    cv2.circle(
-                        frame_copy, 
-                        (int(point[0]), int(point[1])),
-                        1 + int(0.0012 * 64), 
-                        COLORS.GREEN.value, 
-                        -1
-                    )
-        left_eye = self.get_left_eye(shape, rostro)
-        right_eye = self.get_right_eye(shape, rostro)
-        mouth = self.get_mouth(shape)
-        self.calcular_ear(left_eye, right_eye)
-        self.calcular_mar(mouth)
-        sleep_level, frame_copy = self.alert_drowsiness(frame_copy)
+        shape = rostro.actualizar_referencia_lista(shape)
+        rostro.ojo_izquierdo = shape[36:42]
+        rostro.ojo_derecho = shape[42:48]
+        rostro.boca = shape[48:59][::2]
+        self.calcular_ear(rostro)
+        self.calcular_mar(rostro)
+        nivel_somnolencia = self.calcular_somnolencia()
         self.ret_message = {
-            "TotalBlinks": self.total_blinks,
-            "sleepMsg": self.SLEEP_MESSAGE[sleep_level],
-            "drowsiness_level": self.drowsiness,
-            "TotalYawns": self.total_yawns,
-            "action": self.is_distracted,
-            "sleepCode": sleep_level
+            "Pestaneos_totales": self.pestaneos_totales,
+            "Mensaje": self.SLEEP_MESSAGE[nivel_somnolencia],
+            "somnolencia": self.somnolencia,
+            "Bostezos_totales": self.bostezos_totales
         }
-        return frame_copy
+        return self.ret_message
 
-    def convert_to_dlib_rect(self, rostro):
+    def convert_to_dlib_rect(self, frame):
+        height, width, _ = frame.shape
         scale_factor_x = 0.15
         scale_factor_y = 0.20
-        x = rostro.rect['x'] + scale_factor_x * rostro.rect['width']
-        y = rostro.rect['y'] + scale_factor_y * rostro.rect['height']
-        width = rostro.rect['width'] * (1 -2 * scale_factor_x)
-        height = rostro.rect['height'] * (1 - scale_factor_y)
+        x = scale_factor_x * width
+        y = scale_factor_y * height
+        width = width * (1 -2 * scale_factor_x)
+        height = height * (1 - scale_factor_y)
         return dlib.rectangle(
             left=int(x),
             top=int(y),
             right=int(x + width),
             bottom=int(y + height)
         )
-
-    def get_left_eye(self, shape, face):
-        left_eye = []
-        for i in range(36, 42):
-            left_eye.append(shape[i])
-            if shape[i][0] > face.center["x"] or shape[i][1] > face.center["y"]:
-                self.is_distracted = 1
-        return left_eye
-
-    def get_right_eye(self, shape, face):
-        right_eye = []
-        for i in range(42, 48):
-            right_eye.append(shape[i])
-            if shape[i][0] < face.center["x"] or shape[i][1] > face.center["y"]:
-                self.is_distracted = 1
-        return right_eye
-
-    def get_mouth(self, shape):
-        mouth = []
-        for i in range(48, 59, 2):
-            mouth.append(shape[i])
-        return mouth
 
     def dist_a_to_b(self, a, b):
         return sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2)
@@ -283,81 +250,105 @@ class Detector_rasgos_faciales():
             + self.dist_a_to_b(object[2], object[4])
         ) / (2 * self.dist_a_to_b(object[0], object[3]))
 
-    def calcular_ear(self, left_eye, right_eye):
+    def calcular_ear(self, rostro):
         # Calculo de relacion de aspecto del ojo (EAR)
-        ear_left = self.calcular_relacion_de_aspecto(left_eye)
-        ear_right = self.calcular_relacion_de_aspecto(right_eye)
-        ear_avg = (ear_left + ear_right) / 2
+        ear_izq = self.calcular_relacion_de_aspecto(rostro.ojo_izquierdo)
+        ear_der = self.calcular_relacion_de_aspecto(rostro.ojo_derecho)
+        ear_avg = (ear_izq + ear_der) / 2
 
-        if ear_avg < self.eye_ar_thresh:
-            self.v_blink = 1
-            if self.first_blink:
-                self.log.debug(f"FIRST BLINK. blink counts: {self.eye_closed_count}")
-                self.time_blink = 0.0
-                self.first_blink = False
+        if ear_avg < self.limite_cierre_ojos:
+            self.v_pestaneo = 1
+            if self.primer_pestaneo:
+                self.log.debug(f"PRIMER PESTANEO. contador: {self.contador_ojos_cerrados}")
+                self.tiempo_pestaneo = 0.0
+                self.primer_pestaneo = False
             else:
-                self.time_blink = (time() - self.start_time) * 1000 - self.time_blink
-                self.log.debug(f"TimeBlink: {self.time_blink}")
+                self.tiempo_pestaneo = (time() - self.start_time) * 1000 - self.tiempo_pestaneo
+                self.log.debug(f"tiempo de pestaneo: {self.tiempo_pestaneo}")
             self.start_time = time()
-            self.eye_closed_count += 1
-            self.log.debug(f"Eye closed counter: {self.eye_closed_count}")
+            self.contador_ojos_cerrados += 1
+            self.log.debug(f"contador ojos cerrados: {self.contador_ojos_cerrados}")
 
         else:
-            if self.eye_closed_count >= self.eye_closed_threshold:
-                self.total_blinks += 1
-            self.eye_closed_count = 0
-            self.v_blink = 0
-            self.first_blink = True
-            self.time_blink = 0.0
+            if self.contador_ojos_cerrados >= self.limite_ojos_cerrados:
+                self.pestaneos_totales += 1
+            self.contador_ojos_cerrados = 0
+            self.v_pestaneo = 0
+            self.primer_pestaneo = True
+            self.tiempo_pestaneo = 0.0
 
-    def calcular_mar(self, mouth):
+    def calcular_mar(self, rostro):
         # Calculo de relacion de aspecto de la boca
-        mouth_ar = self.calcular_relacion_de_aspecto(mouth)
-        if mouth_ar > self.mouth_ar_thresh:
-            self.yawn_count += 1
+        boca_ar = self.calcular_relacion_de_aspecto(rostro.boca)
+        if boca_ar > self.limite_apertura_boca:
+            self.contador_bostezos += 1
         else:
-            if self.yawn_count >= self.yawn_threshold:
-                self.total_yawns += 1
-                self.v_yawn = 1
-            self.yawn_count = 0
+            if self.contador_bostezos >= self.limite_bostezos:
+                self.bostezos_totales += 1
+                self.v_bostezo = 1
+            self.contador_bostezos = 0
 
-    def calculate_drowsiness_score(self):
-        if self.drowsiness <= self.MAX_NORMAL and (self.v_yawn != 0 or self.v_blink != 0):
-            self.drowsiness = int(
-                self.drowsiness
-                + 100 * self.v_yawn
-                + 50 * self.v_blink * (self.time_blink / 1000)
+
+    def calcular_nivel_somnolencia(self, somnolencia):
+        asignaciones = {
+            (0, self.MAX_NORMAL): 0,
+            (self.MAX_NORMAL, self.MAX_WARNING): 1,
+            (self.MAX_WARNING, self.MAX_CRITICAL_VISUAL): 2,
+            (self.MAX_CRITICAL_VISUAL, float('inf')): 3
+        }
+        for rango, valor in asignaciones.items():
+            if rango[0] <= somnolencia < rango[1]:
+                return valor
+
+    def calcular_somnolencia(self):
+        self.v_bostezo = 0
+        if self.somnolencia <= self.MAX_NORMAL and (self.v_bostezo != 0 or self.v_pestaneo != 0):
+            self.somnolencia = int(
+                self.somnolencia
+                + 100 * self.v_bostezo
+                + 50 * self.v_pestaneo * (self.tiempo_pestaneo / 1000)
             )
-        elif self.drowsiness > self.MAX_NORMAL and (self.v_yawn != 0 or self.v_blink != 0):
-            self.drowsiness = int(
-                self.drowsiness
-                + 50 * self.v_yawn
-                + 100 * self.v_blink * (self.time_blink / 1000)
+        elif self.somnolencia > self.MAX_NORMAL and (self.v_bostezo != 0 or self.v_pestaneo != 0):
+            self.somnolencia = int(
+                self.somnolencia
+                + 50 * self.v_bostezo
+                + 100 * self.v_pestaneo * (self.tiempo_pestaneo / 1000)
             )
         else:
-            if self.drowsiness >= 1:
-                self.drowsiness -= 8
-            if self.drowsiness < 0:
-                self.drowsiness = 0
-            self.log.debug(f"Decreasing drowsiness {self.drowsiness}")
+            if self.somnolencia >= 1:
+                self.somnolencia -= 8
+            if self.somnolencia < 0:
+                self.somnolencia = 0
+            self.log.debug(f"Disminuye somnolencia {self.somnolencia}")
+        
+        
 
-    def draw_drowsiness_vu_meter(
-        self, frame, x_vum_draw, y_vum_draw, x_vum, y_vum, y_vum_unit
-    ):
-        alert_level = 0
+        return self.calcular_nivel_somnolencia(self.somnolencia)
+
+    def dibujar_medidor_de_somnolencia(self, frame):
+        self.height, self.width, _ = frame.shape
+        x = 200 - 125
+        y = 125
+        x_vum = 20
+        y_vum = 150
+        y_vum_unit = 1.5
+        x_truck_i = self.width - (x + 10)
+        y_driver_i = y + 30
+        y_driver = y - 60
+        y_alarm = y_driver_i + y_driver + 10
+        x_vum_draw = x_truck_i + 15
+        y_vum_draw = y_alarm + 55
         line_width = -1
-        if self.drowsiness <= self.MAX_NORMAL:
-            alert_level = 0
+        if self.somnolencia <= self.MAX_NORMAL:
             frame = cv2.rectangle(
                 frame,
-                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * self.drowsiness)),
+                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * self.somnolencia)),
                 (x_vum_draw + x_vum, y_vum_draw + y_vum),
                 (0, 255, 0),
                 line_width,
             )
-            self.log.debug(f"Drowsiness level is normal: {self.drowsiness}")
-        elif self.MAX_NORMAL < self.drowsiness <= self.MAX_WARNING:
-            alert_level = 1
+            self.log.debug(f"Drowsiness level is normal: {self.somnolencia}")
+        elif self.MAX_NORMAL < self.somnolencia <= self.MAX_WARNING:
             frame = cv2.rectangle(
                 frame,
                 (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * self.MAX_NORMAL)),
@@ -367,16 +358,15 @@ class Detector_rasgos_faciales():
             )
             frame = cv2.rectangle(
                 frame,
-                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * self.drowsiness)),
+                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * self.somnolencia)),
                 (x_vum_draw + x_vum, y_vum_draw + y_vum - int(y_vum_unit * self.MAX_NORMAL)),
                 (0, 255, 255),
                 line_width,
             )
             self.log.debug(
-                f"Drowsiness level higher than normal but less than warning: {self.drowsiness}"
+                f"Drowsiness level higher than normal but less than warning: {self.somnolencia}"
             )
-        elif self.MAX_WARNING < self.drowsiness <= self.MAX_CRITICAL:
-            alert_level = 2
+        elif self.MAX_WARNING < self.somnolencia <= self.MAX_CRITICAL:
             frame = cv2.rectangle(
                 frame,
                 (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * self.MAX_NORMAL)),
@@ -393,7 +383,7 @@ class Detector_rasgos_faciales():
             )
             frame = cv2.rectangle(
                 frame,
-                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * self.drowsiness)),
+                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * self.somnolencia)),
                 (
                     x_vum_draw + x_vum,
                     y_vum_draw + y_vum - int(y_vum_unit * self.MAX_WARNING),
@@ -402,7 +392,7 @@ class Detector_rasgos_faciales():
                 line_width,
             )
             self.log.debug(
-                f"Drowsiness level higher than warning but less than critical: {self.drowsiness}"
+                f"Drowsiness level higher than warning but less than critical: {self.somnolencia}"
             )
         else:
             frame = cv2.rectangle(
@@ -432,17 +422,16 @@ class Detector_rasgos_faciales():
                 (0, 0, 255),
                 line_width,
             )
-            alert_level = 3
-            self.log.debug(f"Drowsiness level critical: {self.drowsiness}")
+            self.log.debug(f"Drowsiness level critical: {self.somnolencia}")
 
         cv2.putText(
             frame,
-            str(int(self.drowsiness)),
+            str(int(self.somnolencia)),
             (
                 x_vum_draw + 30,
                 y_vum_draw
                 + y_vum
-                - int(y_vum_unit * min(self.drowsiness, self.MAX_CRITICAL_VISUAL))
+                - int(y_vum_unit * min(self.somnolencia, self.MAX_CRITICAL_VISUAL))
                 + 5,
             ),
             cv2.FONT_HERSHEY_SIMPLEX,
@@ -451,32 +440,7 @@ class Detector_rasgos_faciales():
             1,
         )
 
-        return alert_level, frame
-
-    def alert_drowsiness(self, frame):
-        print(
-            f"ALERT DROWSINESS - vYawn:{self.v_yawn}, timeBlink:{self.time_blink}, drowsiness:{self.drowsiness}"
-        )
-        self.height, self.width, _ = frame.shape
-        x = 200 - 125
-        y = 125
-        x_vum = 20
-        y_vum = 150
-        y_vum_unit = 1.5
-        x_truck_i = self.width - (x + 10)
-        y_driver_i = y + 30
-        y_driver = y - 60
-        y_alarm = y_driver_i + y_driver + 10
-        x_vum_draw = x_truck_i + 15
-        y_vum_draw = y_alarm + 55
-        self.calculate_drowsiness_score()
-
-        self.v_yawn = 0
-        alert_level, frame = self.draw_drowsiness_vu_meter(
-            frame, x_vum_draw, y_vum_draw, x_vum, y_vum, y_vum_unit
-        )
-
-        frame = cv2.rectangle(
+        cv2.rectangle(
             frame,
             (x_vum_draw, y_vum_draw),
             (x_vum_draw + x_vum, y_vum_draw + y_vum),
@@ -501,7 +465,8 @@ class Detector_rasgos_faciales():
             (255, 255, 255),
             1,
         )
-        return alert_level, frame
+
+        return frame
 
 class Detector_posicion_cabeza(Motor_de_inferencia):
     def conductor_distraido(self):
