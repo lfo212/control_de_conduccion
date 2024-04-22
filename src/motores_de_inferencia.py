@@ -5,7 +5,7 @@ import numpy as np
 import dlib
 
 from openvino.inference_engine import IECore
-from objetos import Imagen, Rostro, Face, COLORS
+from objetos import Imagen, Rostro, COLORS
 from imutils import paths, face_utils
 from scipy import spatial
 from time import time
@@ -202,8 +202,6 @@ class Detector_rasgos_faciales():
         self.start_time = None
         self.v_blink = 0
         self.v_yawn = 0
-        self.width = 0
-        self.height = 0
 
         if not os.path.exists(shape_predictor):
             raise FileNotFoundError(f"Shape predictor missing: {shape_predictor}")
@@ -211,14 +209,9 @@ class Detector_rasgos_faciales():
         self.predictor = dlib.shape_predictor(shape_predictor)
         self.detector = dlib.get_frontal_face_detector()
 
-    def detectar_rasgos(self, frame, face):
-        self.height, self.width, _ = frame.shape
-
+    def detectar_rasgos(self, frame, rostro):
         frame_copy = frame.copy()
-        self.sleepDetect = []
-        self.is_distracted = 0
-        face = Face(face)
-        shape = self.predictor(frame, self.convert_to_dlib_rect(face))
+        shape = self.predictor(frame_copy, self.convert_to_dlib_rect(rostro))
         shape = face_utils.shape_to_np(shape)
         self.log.debug(f"Number of points in shape: {len(shape)}")
         for point in shape[36:60]:
@@ -229,13 +222,13 @@ class Detector_rasgos_faciales():
                         COLORS.GREEN.value, 
                         -1
                     )
-        left_eye = self.get_left_eye(shape, face)
-        right_eye = self.get_right_eye(shape, face)
+        left_eye = self.get_left_eye(shape, rostro)
+        right_eye = self.get_right_eye(shape, rostro)
         mouth = self.get_mouth(shape)
-        self.handle_blink_detection(left_eye, right_eye)
-        self.handle_yawn(mouth)
+        self.calcular_ear(left_eye, right_eye)
+        self.calcular_mar(mouth)
         sleep_level, frame_copy = self.alert_drowsiness(frame_copy)
-        ret_message = {
+        self.ret_message = {
             "TotalBlinks": self.total_blinks,
             "sleepMsg": self.SLEEP_MESSAGE[sleep_level],
             "drowsiness_level": self.drowsiness,
@@ -243,16 +236,15 @@ class Detector_rasgos_faciales():
             "action": self.is_distracted,
             "sleepCode": sleep_level
         }
-        self.sleepDetect.append(ret_message)
         return frame_copy
 
-    def convert_to_dlib_rect(self, face):
+    def convert_to_dlib_rect(self, rostro):
         scale_factor_x = 0.15
         scale_factor_y = 0.20
-        x = face.rect['x'] + scale_factor_x * face.rect['width']
-        y = face.rect['y'] + scale_factor_y * face.rect['height']
-        width = face.rect['width'] * (1 -2 * scale_factor_x)
-        height = face.rect['height'] * (1 - scale_factor_y)
+        x = rostro.rect['x'] + scale_factor_x * rostro.rect['width']
+        y = rostro.rect['y'] + scale_factor_y * rostro.rect['height']
+        width = rostro.rect['width'] * (1 -2 * scale_factor_x)
+        height = rostro.rect['height'] * (1 - scale_factor_y)
         return dlib.rectangle(
             left=int(x),
             top=int(y),
@@ -285,21 +277,17 @@ class Detector_rasgos_faciales():
     def dist_a_to_b(self, a, b):
         return sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2)
 
-    def handle_blink_detection(self, left_eye, right_eye):
-        ear_left = (
-            self.dist_a_to_b(left_eye[1], left_eye[5])
-            + self.dist_a_to_b(left_eye[2], left_eye[4])
-        ) / (2 * self.dist_a_to_b(left_eye[0], left_eye[3]))
-        ear_right = (
-            self.dist_a_to_b(right_eye[1], right_eye[5])
-            + self.dist_a_to_b(right_eye[2], right_eye[4])
-        ) / (2 * self.dist_a_to_b(right_eye[0], right_eye[3]))
+    def calcular_relacion_de_aspecto(self, object):
+        return (
+            self.dist_a_to_b(object[1], object[5])
+            + self.dist_a_to_b(object[2], object[4])
+        ) / (2 * self.dist_a_to_b(object[0], object[3]))
 
+    def calcular_ear(self, left_eye, right_eye):
+        # Calculo de relacion de aspecto del ojo (EAR)
+        ear_left = self.calcular_relacion_de_aspecto(left_eye)
+        ear_right = self.calcular_relacion_de_aspecto(right_eye)
         ear_avg = (ear_left + ear_right) / 2
-
-        self.log.debug("######")
-        self.log.debug(f"##### {ear_avg}")
-        self.log.debug("####")
 
         if ear_avg < self.eye_ar_thresh:
             self.v_blink = 1
@@ -322,10 +310,9 @@ class Detector_rasgos_faciales():
             self.first_blink = True
             self.time_blink = 0.0
 
-    def handle_yawn(self, mouth):
-        mouth_ar = (
-            self.dist_a_to_b(mouth[1], mouth[5]) + self.dist_a_to_b(mouth[2], mouth[4])
-        ) / (2 * self.dist_a_to_b(mouth[0], mouth[3]))
+    def calcular_mar(self, mouth):
+        # Calculo de relacion de aspecto de la boca
+        mouth_ar = self.calcular_relacion_de_aspecto(mouth)
         if mouth_ar > self.mouth_ar_thresh:
             self.yawn_count += 1
         else:
@@ -467,10 +454,10 @@ class Detector_rasgos_faciales():
         return alert_level, frame
 
     def alert_drowsiness(self, frame):
-        self.log.debug(
+        print(
             f"ALERT DROWSINESS - vYawn:{self.v_yawn}, timeBlink:{self.time_blink}, drowsiness:{self.drowsiness}"
         )
-
+        self.height, self.width, _ = frame.shape
         x = 200 - 125
         y = 125
         x_vum = 20
@@ -498,7 +485,7 @@ class Detector_rasgos_faciales():
         )
         cv2.putText(
             frame,
-            "Drowsiness",
+            "Medidor de",
             (x_vum_draw - 35, y_vum_draw - 25),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.5,
@@ -507,7 +494,7 @@ class Detector_rasgos_faciales():
         )
         cv2.putText(
             frame,
-            "Level",
+            "somnolencia",
             (x_vum_draw - 35, y_vum_draw - 10),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.5,

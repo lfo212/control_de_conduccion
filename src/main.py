@@ -32,12 +32,12 @@ def main():
     rostro = Rostro.getInstance()
     while success:
         input_height, input_width, _ = img.shape
-        detector_de_rostros.procesar_frame(img)
+        rostro = detector_de_rostros.procesar_frame(img)
         if rostro.rostro_detectado:
-            #imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(img)
+            imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(img)
             #identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
-            img = detector_de_rasgos_faciales.detectar_rasgos(img, rostro.location)
-            print(detector_de_rasgos_faciales.sleepDetect)
+            img = detector_de_rasgos_faciales.detectar_rasgos(img, rostro)
+            print(detector_de_rasgos_faciales.ret_message)
             #detector_posicion_cabeza.detectar_angulos_de_posicion(imagen_rostro_recortado)
             color = COLORS.RED.value if rostro.distraccion_critica else COLORS.GREEN.value
             if show_face:
