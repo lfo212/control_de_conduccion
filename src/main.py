@@ -15,9 +15,9 @@ def main():
 
     # Creamos los motores de inferencia
     detector_de_rostros = mi.Detector_de_rostros(configs["dr_model_xml"], configs["dr_model_bin"], device, confidence_threshold)
-    identificador_de_rostros = mi.Identificador_de_rostros(configs["ir_model_xml"], configs["ir_model_bin"], device, confidence_threshold)
-    detector_de_rasgos_faciales = mi.Detector_de_rasgos_faciales(configs["drf_model_xml"], configs["drf_model_bin"], device, confidence_threshold)
-    detector_posicion_cabeza = mi.Detector_posicion_cabeza(configs["dpc_model_xml"], configs["dpc_model_bin"], device, confidence_threshold)
+    #identificador_de_rostros = mi.Identificador_de_rostros(configs["ir_model_xml"], configs["ir_model_bin"], device, confidence_threshold)
+    detector_de_rasgos_faciales = mi.Detector_rasgos_faciales(configs["drf_model"], device)
+    #detector_posicion_cabeza = mi.Detector_posicion_cabeza(configs["dpc_model_xml"], configs["dpc_model_bin"], device, confidence_threshold)
     
     #Determinamos la visibilidad de las detecciones
     show_face = configs["show_face"]
@@ -26,7 +26,7 @@ def main():
     show_posicion_cabeza = configs["show_posicion_cabeza"]
     show_fps = configs["show_fps"]
     
-    identificador_de_rostros.generar_base_de_datos_de_choferes(configs["drivers_photos"])
+    #identificador_de_rostros.generar_base_de_datos_de_choferes(configs["drivers_photos"])
     frame = Frame(configs["video_input"])
     success, img = frame.new_frame()
     rostro = Rostro.getInstance()
@@ -34,10 +34,11 @@ def main():
         input_height, input_width, _ = img.shape
         detector_de_rostros.procesar_frame(img)
         if rostro.rostro_detectado:
-            imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(img)
-            identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
-            detector_de_rasgos_faciales.detectar_rasgos(imagen_rostro_recortado)
-            detector_posicion_cabeza.detectar_angulos_de_posicion(imagen_rostro_recortado)
+            #imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(img)
+            #identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
+            img = detector_de_rasgos_faciales.detectar_rasgos(img, rostro.location)
+            print(detector_de_rasgos_faciales.sleepDetect)
+            #detector_posicion_cabeza.detectar_angulos_de_posicion(imagen_rostro_recortado)
             color = COLORS.RED.value if rostro.distraccion_critica else COLORS.GREEN.value
             if show_face:
                 cv2.rectangle(

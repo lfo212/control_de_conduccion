@@ -223,4 +223,16 @@ class Rostro:
 
         return points
 
-        
+
+class Face:
+    def __init__(self, face):
+        self.rect = {
+            "x": face["tl"][0],
+            "y": face["tl"][1],
+            "width": face["br"][0] - face["tl"][0],
+            "height": face["br"][1] - face["tl"][1],
+        }
+        self.center = {
+            "x": self.rect["x"] + self.rect["width"] / 2,
+            "y": self.rect["y"] + self.rect["height"] / 2,
+        }
