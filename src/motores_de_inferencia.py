@@ -67,8 +67,6 @@ class Motor_de_inferencia:
                 self.output_blob_prop
             )
 
-    #def obtener_resultados()
-
 class Detector_de_rostros(Motor_de_inferencia):
     
     def procesar_frame(self, frame) -> Rostro:

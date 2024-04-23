@@ -15,9 +15,9 @@ def main():
 
     # Creamos los motores de inferencia
     detector_de_rostros = mi.Detector_de_rostros(configs["dr_model_xml"], configs["dr_model_bin"], device, confidence_threshold)
-    #identificador_de_rostros = mi.Identificador_de_rostros(configs["ir_model_xml"], configs["ir_model_bin"], device, confidence_threshold)
+    identificador_de_rostros = mi.Identificador_de_rostros(configs["ir_model_xml"], configs["ir_model_bin"], device, confidence_threshold)
     detector_de_rasgos_faciales = mi.Detector_rasgos_faciales(configs["drf_model"])
-    #detector_posicion_cabeza = mi.Detector_posicion_cabeza(configs["dpc_model_xml"], configs["dpc_model_bin"], device, confidence_threshold)
+    detector_posicion_cabeza = mi.Detector_posicion_cabeza(configs["dpc_model_xml"], configs["dpc_model_bin"], device, confidence_threshold)
     
     #Determinamos la visibilidad de las detecciones
     show_face = configs["show_face"]
@@ -26,7 +26,7 @@ def main():
     show_posicion_cabeza = configs["show_posicion_cabeza"]
     show_fps = configs["show_fps"]
     
-    #identificador_de_rostros.generar_base_de_datos_de_choferes(configs["drivers_photos"])
+    identificador_de_rostros.generar_base_de_datos_de_choferes(configs["drivers_photos"])
     frame = Frame(configs["video_input"])
     success, img = frame.new_frame()
     rostro = Rostro.getInstance()
@@ -35,9 +35,9 @@ def main():
         detector_de_rostros.procesar_frame(img)
         if rostro.rostro_detectado:
             imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(img)
-            #identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
+            identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
             alerta_somnolencia, somnolencia_critica = detector_de_rasgos_faciales.detectar_rasgos(imagen_rostro_recortado)
-            #detector_posicion_cabeza.detectar_angulos_de_posicion(imagen_rostro_recortado)
+            detector_posicion_cabeza.detectar_angulos_de_posicion(imagen_rostro_recortado)
             color = COLORS.RED.value if (rostro.distraccion_critica or somnolencia_critica) else COLORS.GREEN.value
             if show_face:
                 cv2.rectangle(
@@ -58,14 +58,14 @@ def main():
                     2,
                 )
             if show_rasgos_faciales:
-                Imagen.dibujar_puntos(rostro.obtener_posicion_rasgos_faciales(), img)
+                Imagen.dibujar_puntos(rostro.obtener_posicion_rasgos_faciales(), color, img)
                 detector_de_rasgos_faciales.dibujar_medidor_de_somnolencia(img)
                 cv2.putText(
                     img,
                     alerta_somnolencia,
-                    (10, input_height - 100),
+                    (10, input_height - 50),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
+                    0.5,
                     color,
                     2,
                 )
@@ -87,9 +87,9 @@ def main():
                 cv2.putText(
                     img,
                     f"FPS: {frame.fps}",
-                    (10, input_height - 50),
+                    (10, input_height - 20),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
+                    0.5,
                     color,
                     2,
                 )

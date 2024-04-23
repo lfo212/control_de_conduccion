@@ -86,13 +86,13 @@ class Imagen:
         cv2.circle(frame, points[2], 3, COLORS.BLUE.value, 2)
     
     @staticmethod
-    def dibujar_puntos(points, frame):
+    def dibujar_puntos(points, color, frame):
         for point in points:
             cv2.circle(
                 frame, 
                 (int(point[0]), int(point[1])),
                 1 + int(0.0012 * 64), 
-                COLORS.GREEN.value, 
+                color,
                 -1
             )
 
