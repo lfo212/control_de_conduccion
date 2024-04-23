@@ -1,5 +1,7 @@
 #!/bin/bash
 MODELO=$1
+GREEN='\033[0;32m'
+END='\033[0m'
 
 CARPETA_DE_MODELOS=$(pwd)/modelos
 LINK_MODELO_ENCODER="https://storage.openvinotoolkit.org/repositories/open_model_zoo/2022.1/models_bin/3/$MODELO/$MODELO-encoder/FP32/$MODELO-encoder"
@@ -11,7 +13,7 @@ if [ ! -f "$CARPETA_DE_MODELOS/$MODELO/decoder/$MODELO-decoder.xml"  ]; then
      --create-dirs -o $CARPETA_DE_MODELOS/$MODELO/decoder/$MODELO-decoder.xml
      curl $LINK_MODELO_DECODER.bin \
      --create-dirs -o $CARPETA_DE_MODELOS/$MODELO/decoder/$MODELO-decoder.bin
-     echo "Modelo descargado."
+     echo -e "${GREEN}Modelo descargado.${END}"
 fi
 
 if [ ! -f "$CARPETA_DE_MODELOS/$MODELO/encoder/$MODELO-encoder.xml"  ]; then
@@ -20,5 +22,5 @@ if [ ! -f "$CARPETA_DE_MODELOS/$MODELO/encoder/$MODELO-encoder.xml"  ]; then
      --create-dirs -o $CARPETA_DE_MODELOS/$MODELO/encoder/$MODELO-encoder.xml
      curl $LINK_MODELO_ENCODER.bin \
      --create-dirs -o $CARPETA_DE_MODELOS/$MODELO/encoder/$MODELO-encoder.bin
-    echo "Modelo descargado."
+    echo -e "${GREEN}Modelo descargado.${END}"
 fi

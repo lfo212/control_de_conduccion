@@ -1,5 +1,7 @@
 #!/bin/bash
 MODELO=$1
+GREEN='\033[0;32m'
+END='\033[0m'
 
 CARPETA_DE_MODELOS=$(pwd)/modelos
 LINK_MODELO="https://storage.openvinotoolkit.org/repositories/open_model_zoo/2022.1/models_bin/3"
@@ -13,5 +15,5 @@ fi
 if [ ! -f "$CARPETA_DE_MODELOS/$MODELO/$MODELO.bin"  ]; then
     curl $LINK_MODELO/$MODELO/FP32/$MODELO.bin \
      --create-dirs -o $CARPETA_DE_MODELOS/$MODELO/$MODELO.bin
-    echo "Modelo Descargado"
+    echo -e "${GREEN}Modelo Descargado.${END}"
 fi

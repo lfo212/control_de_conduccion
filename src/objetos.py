@@ -81,11 +81,22 @@ class Imagen:
         colores = COLORS.list_values()
         for index, point in enumerate(points):
             cv2.line(
-                frame, (int(center[0]), int(center[1])), point, colores[index], 2
+                frame, (int(center["x"]), int(center["y"])), point, colores[index], 2
             )
         cv2.circle(frame, points[2], 3, COLORS.BLUE.value, 2)
+    
+    @staticmethod
+    def dibujar_puntos(points, color, frame):
+        for point in points:
+            cv2.circle(
+                frame, 
+                (int(point[0]), int(point[1])),
+                1 + int(0.0012 * 64), 
+                color,
+                -1
+            )
 
-class Rostro:
+class Rostro():
 
     __shared_instance = None
 
@@ -102,8 +113,6 @@ class Rostro:
         else:
             self.nombre = "DESCONOCIDO"
             self.margen_rostro = []
-            self.cejas = []
-            self. nariz = []
             self.ojo_izquierdo = []
             self. ojo_derecho = []
             self.boca = []
@@ -126,18 +135,36 @@ class Rostro:
             }
         self.rostro_detectado = True
     
+    def actualizar_referencia(self, point):
+        return [self.location["tl"][0] + point[0], self.location["tl"][1] + point[1]]
+
+    def actualizar_referencia_lista(self, points):
+        return [self.actualizar_referencia(point) for point in points]
+    
     def redimensionar_posicion(self, frame_width, frame_height):
         self.location = Imagen.incrementar_area_por_porcentaje(self.location, 10)
         self.location = Imagen.obtener_posicion_en_imagen_original(self.location, frame_width, frame_height)
+        self.rect = {
+            "x": self.location["tl"][0],
+            "y": self.location["tl"][1],
+            "width": self.location["br"][0] - self.location["tl"][0],
+            "height": self.location["br"][1] - self.location["tl"][1],
+        }
+        self.center = {
+            "x": self.rect["x"] + self.rect["width"] / 2,
+            "y": self.rect["y"] + self.rect["height"] / 2,
+        }
+    
+
     
     def obtener_posicion_rasgos_faciales(self):
-        return self.margen_rostro + self.nariz + self.ojo_izquierdo + self.ojo_derecho + self.boca
+        return self.ojo_izquierdo + self.ojo_derecho + self.boca
 
     def obtener_puntos_rotacion(self, height, width, face):
         # Head Pose
-        self.center = np.zeros((3, 1), dtype=np.float32)
-        self.center[0] = face["tl"][0] + (face["br"][0] - face["tl"][0]) / 2  # x
-        self.center[1] = face["tl"][1] + (face["br"][1] - face["tl"][1]) / 2  # y
+        #self.center = np.zeros((3, 1), dtype=np.float32)
+        #self.center[0] = face["tl"][0] + (face["br"][0] - face["tl"][0]) / 2  # x
+        #self.center[1] = face["tl"][1] + (face["br"][1] - face["tl"][1]) / 2  # y
 
         ### Draw euler angles 3D axis ###
         pitch = float(self.pitch_angle) * np.float64(np.pi / 180.0)
@@ -209,18 +236,16 @@ class Rostro:
 
         points = []
 
-        p2x = int((x_axis[0] / x_axis[2] * camera_mtx[0][0]) + self.center[0])
-        p2y = int((x_axis[1] / x_axis[2] * camera_mtx[1][1]) + self.center[1])
+        p2x = int((x_axis[0] / x_axis[2] * camera_mtx[0][0]) + self.center["x"])
+        p2y = int((x_axis[1] / x_axis[2] * camera_mtx[1][1]) + self.center["y"])
         points.append((p2x, p2y))
 
-        p2x = int((y_axis[0] / y_axis[2] * camera_mtx[0][0]) + self.center[0])
-        p2y = int((y_axis[1] / y_axis[2] * camera_mtx[1][1]) + self.center[1])
+        p2x = int((y_axis[0] / y_axis[2] * camera_mtx[0][0]) + self.center["x"])
+        p2y = int((y_axis[1] / y_axis[2] * camera_mtx[1][1]) + self.center["y"])
         points.append((p2x, p2y))
 
-        p2x = int((z_axis[0] / z_axis[2] * camera_mtx[0][0]) + self.center[0])
-        p2y = int((z_axis[1] / z_axis[2] * camera_mtx[1][1]) + self.center[1])
+        p2x = int((z_axis[0] / z_axis[2] * camera_mtx[0][0]) + self.center["x"])
+        p2y = int((z_axis[1] / z_axis[2] * camera_mtx[1][1]) + self.center["y"])
         points.append((p2x, p2y))
 
         return points
-
-        
