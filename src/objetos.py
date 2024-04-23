@@ -161,11 +161,6 @@ class Rostro():
         return self.ojo_izquierdo + self.ojo_derecho + self.boca
 
     def obtener_puntos_rotacion(self, height, width, face):
-        # Head Pose
-        #self.center = np.zeros((3, 1), dtype=np.float32)
-        #self.center[0] = face["tl"][0] + (face["br"][0] - face["tl"][0]) / 2  # x
-        #self.center[1] = face["tl"][1] + (face["br"][1] - face["tl"][1]) / 2  # y
-
         ### Draw euler angles 3D axis ###
         pitch = float(self.pitch_angle) * np.float64(np.pi / 180.0)
         yaw = float(self.yaw_angle) * np.float64(np.pi / 180.0)

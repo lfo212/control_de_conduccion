@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
 from objetos import Frame, Rostro
-from motores_de_inferencia import Detector_de_rostros, Motor_de_inferencia, Identificador_de_rostros, Detector_rasgos_faciales
+from motores_de_inferencia import Detector_de_rostros, Motor_de_inferencia, Identificador_de_rostros, Detector_rasgos_faciales, Detector_posicion_cabeza
 
 class TestFrame(unittest.TestCase):
     def setUp(self):
@@ -102,6 +102,51 @@ class TestDetectorRasgosFaciales(unittest.TestCase):
         nivel = self.detector.calcular_somnolencia()
         self.assertEqual(nivel, 2)
 
+class TestDetectorPosicionCabeza(unittest.TestCase):
+    def setUp(self):
+        self.detector = Detector_posicion_cabeza("../modelos/head-pose-estimation-adas-0001/head-pose-estimation-adas-0001.xml", "../modelos/head-pose-estimation-adas-0001/head-pose-estimation-adas-0001.bin", "CPU", 0.5)
+        self.rostro = Rostro.getInstance()
+        self.detector.rostro = self.rostro
+
+    def test_conductor_distraido(self):
+        self.rostro.yaw_angle = 40
+        distracted = self.detector.conductor_distraido()
+        self.assertTrue(distracted)
+
+    def test_distraccion_critica(self):
+        self.rostro.yaw_angle = 40
+        for _ in range(5):
+            distracted = self.detector.distraccion_critica()
+        self.assertTrue(distracted)
+        self.rostro.yaw_angle = 0
+        not_distracted = self.detector.distraccion_critica()
+        self.assertFalse(not_distracted)
+
+    def test_get_output_blob_prop(self):
+        output_blob_prop = self.detector.get_output_blob_prop()
+        self.assertIsInstance(output_blob_prop, list)
+        self.assertGreater(len(output_blob_prop), 0)
+
+    def test_detectar_angulos_de_posicion(self):
+        frame = MagicMock()
+        self.detector.procesar_frame = MagicMock(return_value=[10,10,10])
+        self.detector.detectar_angulos_de_posicion(frame)
+        self.assertIsNotNone(self.detector.rostro)
+
+class TestRostro(unittest.TestCase):
+    def setUp(self):
+        self.rostro = Rostro.getInstance()
+
+    def test_singleton_instance(self):
+        another_rostro = Rostro.getInstance()
+        self.assertIs(self.rostro, another_rostro)
+
+    def test_actualizar_atributos(self):
+        inference_result = [1, 1, 0.9, 0, 0, 10, 10]
+        self.rostro.actualizar_atributos(inference_result)
+        self.assertEqual(self.rostro.id, 1)
+        self.assertEqual(self.rostro.label, 1)
+        self.assertAlmostEqual(self.rostro.confidence, 0.9)
 
 if __name__ == '__main__':
     unittest.main()
