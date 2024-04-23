@@ -81,7 +81,7 @@ class Imagen:
         colores = COLORS.list_values()
         for index, point in enumerate(points):
             cv2.line(
-                frame, (int(center[0]), int(center[1])), point, colores[index], 2
+                frame, (int(center["x"]), int(center["y"])), point, colores[index], 2
             )
         cv2.circle(frame, points[2], 3, COLORS.BLUE.value, 2)
     
