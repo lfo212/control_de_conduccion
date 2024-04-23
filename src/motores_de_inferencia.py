@@ -129,52 +129,13 @@ class Identificador_de_rostros(Motor_de_inferencia):
                     self.rostro.nombre = name
                     break
 
-"""
-class Detector_de_rasgos_faciales(Motor_de_inferencia):
-
-    def suavizar_curva(self, curve):
-        for index, point in enumerate(curve):
-            if index % 2 and index < len(curve) - 1:
-                x = curve[index - 1][1] + (curve[index + 1][1] - curve[index - 1][1]) / 2
-                y = curve[index - 1][0] + (curve[index + 1][0] - curve[index - 1][0]) / 2
-                point[1] = x
-                point[0] = y
-        return curve
-
-    def procesar_frame(self, face_frame, rostro):
-        drf_result = super().procesar_frame(face_frame)[0]
-        self.rostro = rostro
-        location = rostro.location
-        face_width = location["br"][0] - location["tl"][0]
-        face_height = location["br"][1] - location["tl"][1]
-        position_points = []
-        rows, colums = drf_result[0].shape
-        for point in drf_result:
-            max_value_index = np.unravel_index(np.argmax(point, axis=None), point.shape)
-            position_points.append([
-                location["tl"][1] + max_value_index[0] * face_height / rows,
-                location["tl"][0] + max_value_index[1] * face_width / colums
-                ])
-        return position_points
-
-    def detectar_rasgos(self, face_frame):
-        position_points = self.procesar_frame(face_frame, Rostro.getInstance())
-        self.rostro.margen_rostro = self.suavizar_curva(position_points[:32])
-        self.rostro.cejas = position_points[33:51]
-        self.rostro.nariz = position_points[52:60]
-        self.rostro.ojo_derecho = position_points[61:68] + [position_points[-2]]
-        self.rostro.ojo_izquierdo = position_points[69:76] + [position_points[-1]]
-        self.rostro.boca = position_points[77:-2]
-
-"""
-
 class Detector_rasgos_faciales():
     
     SLEEP_MESSAGE = {
-        0: "OK",
-        1: "DROWSINESS WARNING LOW",
-        2: "DROWSINESS WARNING HIGH",
-        3: "DROWSINESS CRITICAL",
+        0: "SOMNOLENCIA: OK",
+        1: "SOMNOLENCIA: BAJA",
+        2: "SOMNOLENCIA: ALTA",
+        3: "SOMNOLENCIA: CRITICA",
     }
 
     # Drowsiness levels
@@ -183,7 +144,7 @@ class Detector_rasgos_faciales():
     MAX_CRITICAL = 70
     MAX_CRITICAL_VISUAL = 100
 
-    def __init__(self, shape_predictor, device):
+    def __init__(self, model):
         """Constructor"""
         self.log = logging.getLogger("RASGOS_FACIALES")
         self.contador_ojos_cerrados = 0
@@ -201,13 +162,12 @@ class Detector_rasgos_faciales():
         self.v_pestaneo = 0
         self.v_bostezo = 0
 
-        if not os.path.exists(shape_predictor):
-            raise FileNotFoundError(f"Shape predictor missing: {shape_predictor}")
+        if not os.path.exists(model):
+            raise FileNotFoundError(f"Shape predictor missing: {model}")
         self.log.debug("Config reading completed...")
-        self.predictor = dlib.shape_predictor(shape_predictor)
-        self.detector = dlib.get_frontal_face_detector()
+        self.predictor = dlib.shape_predictor(model)
 
-    def detectar_rasgos(self, rostro_recortado):
+    def detectar_rasgos(self, rostro_recortado) -> dict:
         rostro = Rostro.getInstance()
         shape = self.predictor(rostro_recortado, self.convert_to_dlib_rect(rostro_recortado))
         shape = face_utils.shape_to_np(shape)
@@ -218,13 +178,8 @@ class Detector_rasgos_faciales():
         self.calcular_ear(rostro)
         self.calcular_mar(rostro)
         nivel_somnolencia = self.calcular_somnolencia()
-        self.ret_message = {
-            "Pestaneos_totales": self.pestaneos_totales,
-            "Mensaje": self.SLEEP_MESSAGE[nivel_somnolencia],
-            "somnolencia": self.somnolencia,
-            "Bostezos_totales": self.bostezos_totales
-        }
-        return self.ret_message
+        return self.SLEEP_MESSAGE[nivel_somnolencia], nivel_somnolencia==3
+        
 
     def convert_to_dlib_rect(self, frame):
         height, width, _ = frame.shape
@@ -289,7 +244,7 @@ class Detector_rasgos_faciales():
             self.contador_bostezos = 0
 
 
-    def calcular_nivel_somnolencia(self, somnolencia):
+    def calcular_nivel(self, somnolencia):
         asignaciones = {
             (0, self.MAX_NORMAL): 0,
             (self.MAX_NORMAL, self.MAX_WARNING): 1,
@@ -323,7 +278,7 @@ class Detector_rasgos_faciales():
         
         
 
-        return self.calcular_nivel_somnolencia(self.somnolencia)
+        return self.calcular_nivel(self.somnolencia)
 
     def dibujar_medidor_de_somnolencia(self, frame):
         self.height, self.width, _ = frame.shape

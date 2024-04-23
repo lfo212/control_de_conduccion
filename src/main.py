@@ -16,7 +16,7 @@ def main():
     # Creamos los motores de inferencia
     detector_de_rostros = mi.Detector_de_rostros(configs["dr_model_xml"], configs["dr_model_bin"], device, confidence_threshold)
     #identificador_de_rostros = mi.Identificador_de_rostros(configs["ir_model_xml"], configs["ir_model_bin"], device, confidence_threshold)
-    detector_de_rasgos_faciales = mi.Detector_rasgos_faciales(configs["drf_model"], device)
+    detector_de_rasgos_faciales = mi.Detector_rasgos_faciales(configs["drf_model"])
     #detector_posicion_cabeza = mi.Detector_posicion_cabeza(configs["dpc_model_xml"], configs["dpc_model_bin"], device, confidence_threshold)
     
     #Determinamos la visibilidad de las detecciones
@@ -36,10 +36,9 @@ def main():
         if rostro.rostro_detectado:
             imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(img)
             #identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
-            detector_de_rasgos_faciales.detectar_rasgos(imagen_rostro_recortado)
-            print(detector_de_rasgos_faciales.ret_message)
+            alerta_somnolencia, somnolencia_critica = detector_de_rasgos_faciales.detectar_rasgos(imagen_rostro_recortado)
             #detector_posicion_cabeza.detectar_angulos_de_posicion(imagen_rostro_recortado)
-            color = COLORS.RED.value if rostro.distraccion_critica else COLORS.GREEN.value
+            color = COLORS.RED.value if (rostro.distraccion_critica or somnolencia_critica) else COLORS.GREEN.value
             if show_face:
                 cv2.rectangle(
                     img, 
@@ -61,6 +60,15 @@ def main():
             if show_rasgos_faciales:
                 Imagen.dibujar_puntos(rostro.obtener_posicion_rasgos_faciales(), img)
                 detector_de_rasgos_faciales.dibujar_medidor_de_somnolencia(img)
+                cv2.putText(
+                    img,
+                    alerta_somnolencia,
+                    (10, input_height - 100),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    color,
+                    2,
+                )
 
             if show_posicion_cabeza:
                 puntos_de_rotacion = rostro.obtener_puntos_rotacion(input_height, input_width, rostro.location)
@@ -72,7 +80,7 @@ def main():
                     (int(input_width / 4), int(input_height / 12) * 11),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     1,
-                    COLORS.RED.value,
+                    color,
                     2,
                 )
             if show_fps:
@@ -82,7 +90,7 @@ def main():
                     (10, input_height - 50),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     1,
-                    COLORS.GREEN.value,
+                    color,
                     2,
                 )
 

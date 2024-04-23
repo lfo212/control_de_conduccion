@@ -113,8 +113,6 @@ class Rostro():
         else:
             self.nombre = "DESCONOCIDO"
             self.margen_rostro = []
-            self.cejas = []
-            self. nariz = []
             self.ojo_izquierdo = []
             self. ojo_derecho = []
             self.boca = []
