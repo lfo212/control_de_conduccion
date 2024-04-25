@@ -74,29 +74,6 @@ def camara_frontal(
                     color, 
                     configs["ancho_recta"]
                 )
-            if show_name:
-                cv2.putText(
-                    img,
-                    rostro.nombre.upper(),
-                    (int(input_width / 4), int(input_height / 12) * 2),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    color,
-                    2,
-                )
-            if show_rasgos_faciales:
-                Imagen.dibujar_puntos(rostro.obtener_posicion_rasgos_faciales(), color, img)
-                detector_de_rasgos_faciales.dibujar_medidor_de_somnolencia(img)
-                cv2.putText(
-                    img,
-                    alerta_somnolencia,
-                    (10, input_height - 50),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    color,
-                    2,
-                )
-
             if show_posicion_cabeza:
                 puntos_de_rotacion = rostro.obtener_puntos_rotacion(input_height, input_width, rostro.location)
                 Imagen.dibujar_posicion_cabeza(puntos_de_rotacion, rostro.center, img)
@@ -104,17 +81,17 @@ def camara_frontal(
                 cv2.putText(
                     img,
                     "DISTRACCION CRITICA",
-                    (int(input_width / 4), int(input_height / 12) * 11),
+                    (int(input_width / 4), int(input_height / 15) * 1),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     1,
                     color,
                     2,
                 )
-            if show_fps:
+            if show_name:
                 cv2.putText(
                     img,
-                    f"FPS: {frame.fps}",
-                    (10, input_height - 20),
+                    f"NOMBRE: {rostro.nombre.upper()}",
+                    (10, int(input_height / 15)*11),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.5,
                     color,
@@ -124,7 +101,29 @@ def camara_frontal(
                 cv2.putText(
                     img,
                     f"ACCION: {acciones[accion.value]}",
-                    (10, input_height - 80),
+                    (10, int(input_height / 15)*12),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    color,
+                    2,
+                )
+            if show_rasgos_faciales:
+                Imagen.dibujar_puntos(rostro.obtener_posicion_rasgos_faciales(), color, img)
+                detector_de_rasgos_faciales.dibujar_medidor_de_somnolencia(img)
+                cv2.putText(
+                    img,
+                    alerta_somnolencia,
+                    (10, int(input_height / 15)*13),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    color,
+                    2,
+                )
+            if show_fps:
+                cv2.putText(
+                    img,
+                    f"FPS: {frame.fps}",
+                    (10, int(input_height / 15)*14),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.5,
                     color,
