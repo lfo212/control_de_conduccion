@@ -10,6 +10,7 @@ from imutils import paths, face_utils
 from scipy import spatial
 from time import time
 from math import sqrt
+from queue import Queue
 
 class Motor_de_inferencia:
 
@@ -38,9 +39,10 @@ class Motor_de_inferencia:
             )
             self.output_blob_prop = self.get_output_blob_prop()
 
-            self.image_prop = Imagen(*_neural_net.input_info[
+            self.image_prop = Imagen(_neural_net.input_info[
                 self.input_blob_prop
             ].input_data.shape)
+
         else:
             self.log.error("Error al cargar red neuronal")
 
@@ -48,9 +50,12 @@ class Motor_de_inferencia:
         return next(iter(self.execution_net.outputs))
 
     def redimensionar_imagen(self, frame):
-        return cv2.dnn.blobFromImage(
-            frame, size=(self.image_prop.height, self.image_prop.width), ddepth=cv2.CV_8U
-        )
+        if not self.image_prop.secuence:
+            return cv2.dnn.blobFromImage(
+                frame, size=(self.image_prop.height, self.image_prop.width), ddepth=cv2.CV_8U
+            )
+        else:
+            return frame
 
     def procesar_frame(self, frame):
         """[summary]
@@ -422,8 +427,12 @@ class Detector_rasgos_faciales():
         return frame
 
 class Detector_posicion_cabeza(Motor_de_inferencia):
+    def __init__(self, model_xml : str, model_bin : str, device : str, confidence_threshold : float, grades_threshold: int):
+        super().__init__(model_xml, model_bin, device, confidence_threshold)
+        self.grados_limite = grades_threshold
+
     def conductor_distraido(self):
-        if abs(self.rostro.yaw_angle) > 30 or abs(self.rostro.pitch_angle) > 30:
+        if abs(self.rostro.yaw_angle) > self.grados_limite or abs(self.rostro.pitch_angle) > self.grados_limite:
             return True
         return False
 
@@ -447,3 +456,24 @@ class Detector_posicion_cabeza(Motor_de_inferencia):
         self.rostro = Rostro.getInstance()
         self.procesar_frame(frame)
         self.rostro.distraccion_critica = self.distraccion_critica()
+
+class detector_acciones_encoder(Motor_de_inferencia):
+
+    def __init__(self, model_xml : str, model_bin : str, device : str, confidence_threshold : float):
+        super().__init__(model_xml, model_bin, device, confidence_threshold)
+        self.frame_queue = Queue(16)
+    def procesar_frame(self, frame):
+        self.frame_queue.put(super().procesar_frame(frame))
+
+class detector_acciones_decoder(Motor_de_inferencia):
+    def procesar_frame(self, frame_queue):
+        if frame_queue.full():
+            decoder_input = np.array(list(frame_queue.queue)).reshape(
+                1, 16, 512
+            )
+            result = (super().procesar_frame(decoder_input)[0].tolist())
+            index = result.index(max(result))
+            frame_queue.get()
+            return index
+        else:
+            return 0
