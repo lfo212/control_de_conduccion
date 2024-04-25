@@ -23,6 +23,9 @@ class Frame:
             self.counter = 0
         else:
             self.counter += 1
+
+    def release(self):
+        self.video_cap.release()
 class COLORS(Enum):
     BLUE  = (255,0,0)
     GREEN = (0,255,0)
@@ -33,11 +36,13 @@ class COLORS(Enum):
         return list(COLORS._value2member_map_.keys())
 class Imagen:
 
-    def __init__(self, batch_size : int, number_of_channels : int, height : int, width : int):
-        self.batch_size = batch_size
-        self.number_of_channels = number_of_channels
-        self.height = height
-        self.width = width
+    def __init__(self, parameters):
+        if len(parameters) == 4:
+            self.batch_size, self.number_of_channels, self.height, self.width = parameters
+            self.secuence = False
+        else:
+            self.batch_size, self.duration, self.dimension_embedding = parameters
+            self.secuence = True
 
     @staticmethod
     def incrementar_area_por_porcentaje(area : dict, porcentaje : int) -> dict:
