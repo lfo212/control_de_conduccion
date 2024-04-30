@@ -1,7 +1,8 @@
 import unittest
 from unittest.mock import MagicMock
 from objetos import Frame, Rostro
-from motores_de_inferencia import Detector_de_rostros, Motor_de_inferencia, Identificador_de_rostros, Detector_rasgos_faciales, Detector_posicion_cabeza
+import motores_de_inferencia as mi
+from queue import Queue
 
 class TestFrame(unittest.TestCase):
     def setUp(self):
@@ -16,9 +17,9 @@ class TestFrame(unittest.TestCase):
 
 class TestDetectorDeRostros(unittest.TestCase):
     def setUp(self):
-        self.detector = Detector_de_rostros("../modelos/face-detection-retail-0004/face-detection-retail-0004.xml", "../modelos/face-detection-retail-0004/face-detection-retail-0004.bin", "CPU", 0.5)
+        self.detector = mi.Detector_de_rostros("../modelos/face-detection-retail-0004/face-detection-retail-0004.xml", "../modelos/face-detection-retail-0004/face-detection-retail-0004.bin", "CPU", 0.5)
         # Mocking super().procesar_frame() para retornar un valor predefinido
-        Motor_de_inferencia.procesar_frame = MagicMock(return_value=[[[[0, 1, 2, 3, 4, 5, 6]]]])
+        mi.Motor_de_inferencia.procesar_frame = MagicMock(return_value=[[[[0, 1, 2, 3, 4, 5, 6]]]])
         self.frame = Frame(0)
         self.frame.shape = [100, 100, 100]
 
@@ -34,7 +35,7 @@ class TestDetectorDeRostros(unittest.TestCase):
 
 class TestIdentificadorDeRostros(unittest.TestCase):
     def setUp(self):
-        self.identificador = Identificador_de_rostros("../modelos/face-reidentification-retail-0095/face-reidentification-retail-0095.xml", "../modelos/face-reidentification-retail-0095/face-reidentification-retail-0095.bin", "CPU", 0.5)
+        self.identificador = mi.Identificador_de_rostros("../modelos/face-reidentification-retail-0095/face-reidentification-retail-0095.xml", "../modelos/face-reidentification-retail-0095/face-reidentification-retail-0095.bin", "CPU", 0.5)
         # Mocking super().procesar_frame()
         self.identificador.procesar_frame = MagicMock(return_value=[0.1, 0.2, 0.3, 0.4, 0.5])
         # Mocking self.choferes_dict
@@ -60,7 +61,7 @@ class TestIdentificadorDeRostros(unittest.TestCase):
 
 class TestDetectorRasgosFaciales(unittest.TestCase):
     def setUp(self):
-        self.detector = Detector_rasgos_faciales("../modelos/shape_predictor_68_face_landmarks/shape_predictor_68_face_landmarks.dat")
+        self.detector = mi.Detector_rasgos_faciales("../modelos/shape_predictor_68_face_landmarks/shape_predictor_68_face_landmarks.dat")
 
     def test_convert_to_dlib_rect(self):
         self.frame = MagicMock()
@@ -104,7 +105,7 @@ class TestDetectorRasgosFaciales(unittest.TestCase):
 
 class TestDetectorPosicionCabeza(unittest.TestCase):
     def setUp(self):
-        self.detector = Detector_posicion_cabeza("../modelos/head-pose-estimation-adas-0001/head-pose-estimation-adas-0001.xml", "../modelos/head-pose-estimation-adas-0001/head-pose-estimation-adas-0001.bin", "CPU", 0.5)
+        self.detector = mi.Detector_posicion_cabeza("../modelos/head-pose-estimation-adas-0001/head-pose-estimation-adas-0001.xml", "../modelos/head-pose-estimation-adas-0001/head-pose-estimation-adas-0001.bin", "CPU", 0.5, 30)
         self.rostro = Rostro.getInstance()
         self.detector.rostro = self.rostro
 
@@ -147,6 +148,33 @@ class TestRostro(unittest.TestCase):
         self.assertEqual(self.rostro.id, 1)
         self.assertEqual(self.rostro.label, 1)
         self.assertAlmostEqual(self.rostro.confidence, 0.9)
+
+class TestDetectorAccionesEncoder(unittest.TestCase):
+    def setUp(self):
+        self.encoder = mi.detector_acciones_encoder("../modelos/driver-action-recognition-adas-0002/encoder/driver-action-recognition-adas-0002-encoder.xml", "../modelos/driver-action-recognition-adas-0002/encoder/driver-action-recognition-adas-0002-encoder.bin", "CPU", 0.5)
+
+    def test_procesar_frame(self):
+        frame = MagicMock()
+        mi.Motor_de_inferencia.procesar_frame = MagicMock(return_value=1)
+        self.encoder.procesar_frame(frame)
+        self.assertEqual(self.encoder.frame_queue.qsize(), 1)
+
+class TestDetectorAccionesDecoder(unittest.TestCase):
+    def setUp(self):
+        self.decoder = mi.detector_acciones_decoder("../modelos/driver-action-recognition-adas-0002/decoder/driver-action-recognition-adas-0002-decoder.xml", "../modelos/driver-action-recognition-adas-0002/decoder/driver-action-recognition-adas-0002-decoder.bin", "CPU", 0.5)
+
+    def test_procesar_secuencia_when_queue_full(self):
+        frame_queue = Queue(16)
+        for _ in range(16):
+            frame_queue.put([0.5] * 512)
+        index = self.decoder.procesar_secuencia(frame_queue)
+        self.assertIsInstance(index, int)
+        self.assertGreaterEqual(index, 0)
+
+    def test_procesar_secuencia_when_queue_not_full(self):
+        frame_queue = Queue(16)
+        index = self.decoder.procesar_secuencia(frame_queue)
+        self.assertEqual(index, 0)
 
 if __name__ == '__main__':
     unittest.main()

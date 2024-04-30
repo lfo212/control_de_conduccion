@@ -178,7 +178,7 @@ def camara_lateral(configs,
         while distracted.value and success:
             input_height, _, _ = img.shape
             detector_de_acciones_encoder.procesar_frame(img)
-            action_index = detector_de_acciones_decoder.procesar_frame(detector_de_acciones_encoder.frame_queue)
+            action_index = detector_de_acciones_decoder.procesar_secuencia(detector_de_acciones_encoder.frame_queue)
             accion.value = action_index
             if show_fps:
                 cv2.putText(

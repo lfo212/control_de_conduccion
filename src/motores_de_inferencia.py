@@ -466,7 +466,7 @@ class detector_acciones_encoder(Motor_de_inferencia):
         self.frame_queue.put(super().procesar_frame(frame))
 
 class detector_acciones_decoder(Motor_de_inferencia):
-    def procesar_frame(self, frame_queue):
+    def procesar_secuencia(self, frame_queue):
         if frame_queue.full():
             decoder_input = np.array(list(frame_queue.queue)).reshape(
                 1, 16, 512
