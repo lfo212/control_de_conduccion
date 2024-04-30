@@ -1,0 +1,29 @@
+services:
+
+  control_de_manejo:
+      build:
+        context: $PWD
+        dockerfile: $PWD/Dockerfile
+      image: control_de_manejo
+      container_name: control_de_manejo
+      hostname: control_de_manejo
+      read_only: false
+      healthcheck:
+          test: ["CMD-SHELL", "exit 0"]
+          interval: 5m
+      environment:
+        DISPLAY: $DISPLAY
+        HOSTXAUTH: "/tmp/host-xauth"
+        XAUTHORITY: /tmp/.Xauthority
+        QT_X11_NO_MITSHM: 1
+        AppName: "Control_de_manejo"
+      volumes:
+        - "/dev:/dev"
+        - "/var/tmp:/var/tmp"
+        - "/opt/altera:/opt/altera"
+        - "${HOME}/.Xauthority:/tmp/host-xauth:ro"
+        - "/tmp/.X11-unix:/tmp/.X11-unix"
+        - ./Certificates/rootca/cacert.pem:/run/secrets/rootca/cacert.pem
+      privileged: true
+      devices:
+        - "/dev/:/dev/"

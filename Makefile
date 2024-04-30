@@ -7,4 +7,6 @@ download_models:
 	./scripts/descargar_modelo_action_recognition.sh driver-action-recognition-adas-0002
 	./scripts/descargar_dlib_model.sh
 start: 	download_models
-	./scripts/start.sh
+	docker-compose down
+	docker-compose build
+	docker-compose up
