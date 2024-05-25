@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM orgoro/dlib-opencv-python
 
 # Set the display environment variable
 ENV DISPLAY=:0

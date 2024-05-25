@@ -3,6 +3,5 @@ imutils
 openvino==2022.1.0
 scipy
 numpy
-dlib
 pydantic
 websockets
