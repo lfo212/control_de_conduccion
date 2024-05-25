@@ -27,3 +27,6 @@ services:
       privileged: true
       devices:
         - "/dev/:/dev/"
+      ports:
+      - "8765:8765"
+      - "8766:8766"

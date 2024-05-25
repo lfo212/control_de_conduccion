@@ -4,14 +4,18 @@ import logging
 from objetos import Frame, Imagen, Rostro, COLORS
 from imutils import resize
 from json import load
-from multiprocessing import Process, Value
+from multiprocessing import Process, Value, Manager
 from time import sleep
+import asyncio
+import websockets
+import base64
 
 def camara_frontal(
         configs,
         distracted,
         accion,
-        programa_finalizado):
+        programa_finalizado,
+        frame_frontal):
 
     device = configs["device"]
     confidence_threshold = configs["confidence_threshold"]
@@ -132,17 +136,8 @@ def camara_frontal(
 
 
         showImg = resize(img, height=750, width=680)
-        cv2.imshow("showFrontal", showImg)
-        cv2.waitKey(1)
-        if cv2.waitKey(10) == 27:  # exit if Esc
-            programa_finalizado.value = True
-            break
-        if cv2.waitKey(10) == 97:
-            show_face = not show_face
-        if cv2.waitKey(10) == 115:
-            show_name = not show_name
-        if cv2.waitKey(10) == 100:
-            show_facial_landmarks = not show_facial_landmarks   
+        with frame_frontal["lock"]:
+            frame_frontal["img"] = showImg
 
         success, img = frame.new_frame()
     frame.release()
@@ -152,7 +147,8 @@ def camara_frontal(
 def camara_lateral(configs,
         distracted,
         accion,
-        programa_finalizado):
+        programa_finalizado,
+        frame_lateral):
     log = logging.getLogger("Camara lateral")
     show_fps = configs["show_fps"]
     color = COLORS.GREEN.value
@@ -190,27 +186,41 @@ def camara_lateral(configs,
                     color,
                     2,
                 )
-            cv2.namedWindow('showSide')
-            cv2.moveWindow('showSide', 1000, 250)
             showImg = resize(img, height=750, width=680)
-            cv2.imshow("showSide", showImg)
-            cv2.waitKey(1)
+            with frame_lateral["lock"]:
+                frame_lateral["img"] = showImg
             if programa_finalizado.value:
                 break
             success, img = frame.new_frame()
         # Deja de estar distraido, vuelve a conduccion segura
         accion.value = 0
-        try:
-            if cv2.getWindowProperty('showSide', cv2.WND_PROP_VISIBLE) >= 0:
-                cv2.destroyWindow("showSide")
-        except cv2.error as e:
-            log.error("ventana showSide cerrada")
         frame.release()
     log.info("Proceso terminado")
 
+async def send_frame(
+    websocket,
+    path,
+    data
+):
+    log = logging.getLogger("Send frame")
+    while True:
+        with data["lock"]:
+            if data["img"] is not None:
+                _, buffer = cv2.imencode('.jpg', data["img"])
+                frame_encoded = base64.b64encode(buffer).decode('utf-8')
+                try:
+                    await websocket.send(frame_encoded)
+                except websockets.exceptions.ConnectionClosed:
+                    log.error("WebSocket connection closed")
+                    break
+
+            await asyncio.sleep(0.033)
+    log.info("Proceso terminado")
 
 
 def main():
+
+    #logging.basicConfig(level=logging.INFO)  # Set logging level to INFO
 
     configs = {}
     # Cargamos configuraciones de json
@@ -219,23 +229,48 @@ def main():
     distracted = Value('b', False)
     accion = Value('i', 0)
     programa_finalizado = Value('b', False)
+    manager = Manager()
+    frame_frontal = manager.dict()
+    frame_lateral = manager.dict()
+    frame_frontal["img"] = None
+    frame_frontal["lock"] = manager.Lock()
+    frame_lateral["img"] = None
+    frame_lateral["lock"] = manager.Lock()
 
     # Proceso que maneja la camara frontal
     frontal_camera_process = Process(target=camara_frontal, args=(
         configs,
         distracted,
         accion,
-        programa_finalizado))
-
+        programa_finalizado,
+        frame_frontal))
     # Proceso que maneja la camara lateral
     side_camera_process = Process(target=camara_lateral, args=(
         configs,
         distracted,
         accion,
-        programa_finalizado))
+        programa_finalizado,
+        frame_lateral))
+    start_server_frontal = websockets.serve(
+        lambda ws, path: send_frame(ws, path, frame_frontal),
+        "0.0.0.0",
+        8765
+    )
+    start_server_lateral = websockets.serve(
+        lambda ws, path: send_frame(ws, path, frame_lateral),
+        "0.0.0.0",
+        8766
+    )
 
     frontal_camera_process.start()
     side_camera_process.start()
+
+    # Run the WebSocket server
+    asyncio.get_event_loop().run_until_complete(start_server_frontal)
+    asyncio.get_event_loop().run_until_complete(start_server_lateral)
+    asyncio.get_event_loop().run_forever()
+
+
 
     frontal_camera_process.join()
     side_camera_process.join()

@@ -14,4 +14,8 @@ RUN pip3.8 install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Make port 8765 and 8766 available to the world outside this container
+EXPOSE 8765
+EXPOSE 8766
+
 CMD [ "python3.8", "./src/main.py" ]

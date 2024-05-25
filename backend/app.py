@@ -97,10 +97,16 @@ def save_config():
         config = json.load(f)
     
     # Update paths for video files
-    if 'front_video_input' in new_config and new_config['front_video_input'] in list_video_files():
-        new_config['front_video_input'] = os.path.join(TEST_VIDEOS_FOLDER, new_config['front_video_input'])
-    if 'side_video_input' in new_config and new_config['side_video_input'] in list_video_files():
-        new_config['side_video_input'] = os.path.join(TEST_VIDEOS_FOLDER, new_config['side_video_input'])
+    if 'front_video_input' in new_config:
+        if new_config['front_video_input'] in list_video_files():
+            new_config['front_video_input'] = os.path.join(TEST_VIDEOS_FOLDER, new_config['front_video_input'])
+        else:
+            new_config['front_video_input'] = int(new_config['front_video_input'])
+    if 'side_video_input' in new_config:
+        if new_config['side_video_input'] in list_video_files():
+            new_config['side_video_input'] = os.path.join(TEST_VIDEOS_FOLDER, new_config['side_video_input'])
+        else:
+            new_config['side_video_input'] = int(new_config['side_video_input'])
     config.update(new_config)
 
     with open(CONFIG_FILE, 'w') as f:
