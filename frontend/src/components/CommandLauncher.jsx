@@ -32,8 +32,8 @@ const ControlButton = () => {
   
     return (
       <div>
-        <button onClick={handleClick} className="btn btn-primary">{buttonText}</button>
-        <p>Status: {isStarted ? 'Started' : 'Stopped'}</p>
+        <button onClick={handleClick} className="btn btn-primary d-flex justify-content-end mt-3">{buttonText}</button>
+        <p>Status: {isStarted ? 'Iniciado' : 'Detenido'}</p>
         <Toast message={toastMessage} show={showToast} />
       </div>
     );

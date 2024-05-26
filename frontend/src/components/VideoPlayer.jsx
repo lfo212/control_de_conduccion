@@ -1,7 +1,7 @@
 // VideoPlayer.jsx
 import React, { useEffect, useRef, useState } from 'react';
 
-const VideoPlayer = ({ wsUrl }) => {
+const VideoPlayer = ({ wsUrl, name, offline_image }) => {
   const videoRef = useRef(null);
   const [connected, setConnected] = useState(false);
   const reconnectIntervalRef = useRef(null);
@@ -53,12 +53,13 @@ const VideoPlayer = ({ wsUrl }) => {
   }, [wsUrl]);
 
   return (
+    
     <div>
-      <h2>Video Output {connected ? '(Connected)' : '(Disconnected)'}</h2>
+      <h2>{name} {connected ? '(Encendida)' : '(Apagada)'}</h2>
       {connected ? (
-        <canvas ref={videoRef} width="640" height="480"></canvas>
+        <canvas ref={videoRef} width="480" height="360"></canvas>
       ) : (
-        <p>Attempting to reconnect...</p>
+        <img src={offline_image} className="transparent-image" alt="Transparent" width="480" height="360" />
       )}
     </div>
   );

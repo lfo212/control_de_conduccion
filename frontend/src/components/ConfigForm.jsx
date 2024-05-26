@@ -12,7 +12,7 @@ const configKeyLabels = {
   front_video_input: 'Camara frontal',
   side_video_input: 'Camara lateral',
   confidence_threshold: 'Umbral de confiaza',
-  head_grades_threshold: 'Limite de movimiento cabeza',
+  head_grades_threshold: 'Grados limite cabeza',
 };
 
 const ConfigSettings = () => {
@@ -74,7 +74,7 @@ const ConfigSettings = () => {
                     name={key}
                     value={newConfig[key] !== undefined ? newConfig[key] : value}
                     onChange={handleChange}
-                    style={{ flex: '1' }}
+                    style={{ flex: '1', maxWidth: '200px', marginLeft: '10px' }}
                   >
                     <option value="">Seleccione una opcion</option>
                     {cameraDevices.map((device) => (
@@ -90,7 +90,7 @@ const ConfigSettings = () => {
                   </select>
                 ) : (
                   <input
-                    style={{ marginRight: '10px', marginLeft: '10px', flex: '1' }}
+                    style={{ marginRight: '10px', marginLeft: '10px', flex: '1', maxWidth: '200px' }}
                     type={typeof value === 'boolean' ? 'checkbox' : 'text'}
                     name={key}
                     value={newConfig[key] !== undefined ? newConfig[key] : value}
@@ -103,7 +103,7 @@ const ConfigSettings = () => {
           ))}
         </div>
         <div>
-          <button onClick={handleSave}>Save</button>
+          <button onClick={handleSave}>Guardar</button>
         </div>
       </div>
     );

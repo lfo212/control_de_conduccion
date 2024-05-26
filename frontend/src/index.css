@@ -30,7 +30,7 @@ body {
   min-height: 100vh;
 
   /* Add background image properties here */
-  background-image: url('./images/background.jpg');
+  background-image: url('/background.jpg');
   background-size: cover; /* Ensures the image covers the entire background */
   background-position: center; /* Centers the image */
   background-repeat: no-repeat; /* Prevents the image from repeating */
