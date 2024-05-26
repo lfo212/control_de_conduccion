@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM orgoro/dlib-opencv-python
 
 # Set the display environment variable
 ENV DISPLAY=:0
@@ -13,5 +13,9 @@ COPY requirements.txt ./
 RUN pip3.8 install --no-cache-dir -r requirements.txt
 
 COPY . .
+
+# Make port 8765 and 8766 available to the world outside this container
+EXPOSE 8765
+EXPOSE 8766
 
 CMD [ "python3.8", "./src/main.py" ]
