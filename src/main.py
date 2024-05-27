@@ -10,6 +10,75 @@ import asyncio
 import websockets
 import base64
 
+def dibujar_resultados(frame, configs, rostro, accion, log):
+    input_height, input_width, _ = frame.img.shape
+    color = COLORS.RED.value if (rostro.distraccion_critica or rostro.somnolencia_critica) else COLORS.GREEN.value
+    accion_string = configs["acciones"][accion.value]
+    if configs["show_face"]:
+        cv2.rectangle(
+            frame.img,
+            rostro.location["tl"],
+            rostro.location["br"],
+            color,
+            configs["ancho_recta"]
+        )
+    if configs["show_posicion_cabeza"]:
+        puntos_de_rotacion = rostro.obtener_puntos_rotacion(input_height, input_width, rostro.location)
+        Imagen.dibujar_posicion_cabeza(puntos_de_rotacion, rostro.center, frame.img)
+    if rostro.distraccion_critica:
+        cv2.putText(
+            frame.img,
+            "DISTRACCION CRITICA",
+            (int(input_width / 4), int(input_height / 15) * 1),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            color,
+            2,
+        )
+    if configs["show_name"]:
+        cv2.putText(
+            frame.img,
+            f"NOMBRE: {rostro.nombre.upper()}",
+            (10, int(input_height / 15)*11),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            color,
+            2,
+        )
+    if configs["show_acciones"]:
+        cv2.putText(
+            frame.img,
+            f"ACCION: {accion_string}",
+            (10, int(input_height / 15)*12),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            color,
+            2,
+        )
+    if configs["show_rasgos_faciales"]:
+        Imagen.dibujar_puntos(rostro.obtener_posicion_rasgos_faciales(), color, frame.img)
+        Imagen.dibujar_medidor_de_somnolencia(rostro.somnolencia, frame.img, log)
+        cv2.putText(
+            frame.img,
+            rostro.alerta_somnolencia,
+            (10, int(input_height / 15)*13),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            color,
+            2,
+        )
+    if configs["show_fps"]:
+        cv2.putText(
+            frame.img,
+            f"FPS: {frame.fps}",
+            (10, int(input_height / 15)*14),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            color,
+            2,
+        )
+
+
 def camara_frontal(
         configs,
         distracted,
@@ -45,101 +114,27 @@ def camara_frontal(
         configs["head_grades_threshold"]
     )
     
-    #Determinamos la visibilidad de las detecciones
-    show_face = configs["show_face"]
-    show_name = configs["show_name"]
-    show_rasgos_faciales = configs["show_rasgos_faciales"]
-    show_posicion_cabeza = configs["show_posicion_cabeza"]
-    show_acciones = configs["show_acciones"]
-    show_fps = configs["show_fps"]
-    
     identificador_de_rostros.generar_base_de_datos_de_choferes(configs["drivers_photos"])
     frame = Frame(configs["front_video_input"])
     rostro = Rostro.getInstance()
-    acciones = configs["acciones"]
 
     while True:
-        success, img = frame.new_frame()
-        if success:
-            input_height, input_width, _ = img.shape
-            detector_de_rostros.procesar_frame(img)
+        frame.new_frame()
+        if frame.success:
+            detector_de_rostros.procesar_frame(frame.img)
             if rostro.rostro_detectado:
-                imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(img)
+                imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(frame.img)
+                # Paralelizar el procesamiento de estos tres modelos
                 identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
-                alerta_somnolencia, somnolencia_critica = detector_de_rasgos_faciales.detectar_rasgos(imagen_rostro_recortado)
+                rostro.somnolencia, rostro.alerta_somnolencia, rostro.somnolencia_critica = detector_de_rasgos_faciales.detectar_rasgos(imagen_rostro_recortado)
                 detector_posicion_cabeza.detectar_angulos_de_posicion(imagen_rostro_recortado)
                 distracted.value = rostro.distraccion_critica
-                color = COLORS.RED.value if (rostro.distraccion_critica or somnolencia_critica) else COLORS.GREEN.value
-                if show_face:
-                    cv2.rectangle(
-                        img,
-                        rostro.location["tl"],
-                        rostro.location["br"],
-                        color,
-                        configs["ancho_recta"]
-                    )
-                if show_posicion_cabeza:
-                    puntos_de_rotacion = rostro.obtener_puntos_rotacion(input_height, input_width, rostro.location)
-                    Imagen.dibujar_posicion_cabeza(puntos_de_rotacion, rostro.center, img)
-                if rostro.distraccion_critica:
-                    cv2.putText(
-                        img,
-                        "DISTRACCION CRITICA",
-                        (int(input_width / 4), int(input_height / 15) * 1),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        1,
-                        color,
-                        2,
-                    )
-                if show_name:
-                    cv2.putText(
-                        img,
-                        f"NOMBRE: {rostro.nombre.upper()}",
-                        (10, int(input_height / 15)*11),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        color,
-                        2,
-                    )
-                if show_acciones:
-                    cv2.putText(
-                        img,
-                        f"ACCION: {acciones[accion.value]}",
-                        (10, int(input_height / 15)*12),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        color,
-                        2,
-                    )
-                if show_rasgos_faciales:
-                    Imagen.dibujar_puntos(rostro.obtener_posicion_rasgos_faciales(), color, img)
-                    detector_de_rasgos_faciales.dibujar_medidor_de_somnolencia(img)
-                    cv2.putText(
-                        img,
-                        alerta_somnolencia,
-                        (10, int(input_height / 15)*13),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        color,
-                        2,
-                    )
-                if show_fps:
-                    cv2.putText(
-                        img,
-                        f"FPS: {frame.fps}",
-                        (10, int(input_height / 15)*14),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        color,
-                        2,
-                    )
-
-
-            showImg = resize(img, height=750, width=680)
+                
+                dibujar_resultados(frame, configs, rostro, accion, log)
             with frame_frontal["lock"]:
-                frame_frontal["img"] = showImg
+                frame_frontal["img"] = frame.img
 
-            success, img = frame.new_frame()
+            frame.new_frame()
         else:
             try:
                 frame.video_cap.set(cv2.CAP_PROP_POS_FRAMES, 0) # Reinicio en caso de ser un video
@@ -170,20 +165,16 @@ def camara_lateral(configs,
         configs["confidence_threshold"]
     )
     while not programa_finalizado.value:
-        # while not distracted.value:
-        #     sleep(1)
-        #     if programa_finalizado.value:
-        #         break
-        success, img = frame.new_frame()
-        if success:
+        frame.new_frame()
+        if frame.success:
             if distracted.value:
-                input_height, _, _ = img.shape
-                detector_de_acciones_encoder.procesar_frame(img)
+                input_height, _, _ = frame.img.shape
+                detector_de_acciones_encoder.procesar_frame(frame.img)
                 action_index = detector_de_acciones_decoder.procesar_secuencia(detector_de_acciones_encoder.frame_queue)
                 accion.value = action_index
                 if show_fps:
                     cv2.putText(
-                        img,
+                        frame.img,
                         f"FPS: {frame.fps}",
                         (10, input_height - 20),
                         cv2.FONT_HERSHEY_SIMPLEX,
@@ -193,15 +184,10 @@ def camara_lateral(configs,
                     )
             else:
                 accion.value = 0
-            showImg = resize(img, height=750, width=680)
             with frame_lateral["lock"]:
-                frame_lateral["img"] = showImg
+                frame_lateral["img"] = frame.img
         else:
             frame.video_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-        # if programa_finalizado.value:
-        #     break
-        # success, img = frame.new_frame()
-        # Deja de estar distraido, vuelve a conduccion segura
     frame.release()
     log.info("Proceso terminado")
 

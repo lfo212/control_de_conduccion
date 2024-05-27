@@ -134,18 +134,18 @@ class Identificador_de_rostros(Motor_de_inferencia):
 
 class Detector_rasgos_faciales():
     
+    # Drowsiness levels
+    MAX_NORMAL = 20
+    MAX_WARNING = 50
+    MAX_CRITICAL = 70
+    MAX_CRITICAL_VISUAL = 100
+
     SLEEP_MESSAGE = {
         0: "SOMNOLENCIA: OK",
         1: "SOMNOLENCIA: BAJA",
         2: "SOMNOLENCIA: ALTA",
         3: "SOMNOLENCIA: CRITICA",
     }
-
-    # Drowsiness levels
-    MAX_NORMAL = 20
-    MAX_WARNING = 50
-    MAX_CRITICAL = 70
-    MAX_CRITICAL_VISUAL = 100
 
     def __init__(self, model):
         """Constructor"""
@@ -181,7 +181,7 @@ class Detector_rasgos_faciales():
         self.calcular_ear(rostro)
         self.calcular_mar(rostro)
         nivel_somnolencia = self.calcular_somnolencia()
-        return self.SLEEP_MESSAGE[nivel_somnolencia], nivel_somnolencia==3
+        return self.somnolencia, self.SLEEP_MESSAGE[nivel_somnolencia], nivel_somnolencia==3
         
 
     def convert_to_dlib_rect(self, frame):
@@ -278,153 +278,8 @@ class Detector_rasgos_faciales():
             if self.somnolencia < 0:
                 self.somnolencia = 0
             self.log.debug(f"Disminuye somnolencia {self.somnolencia}")
-        
-        
 
         return self.calcular_nivel(self.somnolencia)
-
-    def dibujar_medidor_de_somnolencia(self, frame):
-        self.height, self.width, _ = frame.shape
-        x = 200 - 125
-        y = 125
-        x_vum = 20
-        y_vum = 150
-        y_vum_unit = 1.5
-        x_truck_i = self.width - (x + 10)
-        y_driver_i = y + 30
-        y_driver = y - 60
-        y_alarm = y_driver_i + y_driver + 10
-        x_vum_draw = x_truck_i + 15
-        y_vum_draw = y_alarm + 55
-        line_width = -1
-        if self.somnolencia <= self.MAX_NORMAL:
-            frame = cv2.rectangle(
-                frame,
-                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * self.somnolencia)),
-                (x_vum_draw + x_vum, y_vum_draw + y_vum),
-                (0, 255, 0),
-                line_width,
-            )
-            self.log.debug(f"Drowsiness level is normal: {self.somnolencia}")
-        elif self.MAX_NORMAL < self.somnolencia <= self.MAX_WARNING:
-            frame = cv2.rectangle(
-                frame,
-                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * self.MAX_NORMAL)),
-                (x_vum_draw + x_vum, y_vum_draw + y_vum),
-                (0, 255, 0),
-                line_width,
-            )
-            frame = cv2.rectangle(
-                frame,
-                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * self.somnolencia)),
-                (x_vum_draw + x_vum, y_vum_draw + y_vum - int(y_vum_unit * self.MAX_NORMAL)),
-                (0, 255, 255),
-                line_width,
-            )
-            self.log.debug(
-                f"Drowsiness level higher than normal but less than warning: {self.somnolencia}"
-            )
-        elif self.MAX_WARNING < self.somnolencia <= self.MAX_CRITICAL:
-            frame = cv2.rectangle(
-                frame,
-                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * self.MAX_NORMAL)),
-                (x_vum_draw + x_vum, y_vum_draw + y_vum),
-                (0, 255, 0),
-                line_width,
-            )
-            frame = cv2.rectangle(
-                frame,
-                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * self.MAX_WARNING)),
-                (x_vum_draw + x_vum, y_vum_draw + y_vum - int(y_vum_unit * self.MAX_NORMAL)),
-                (0, 255, 255),
-                line_width,
-            )
-            frame = cv2.rectangle(
-                frame,
-                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * self.somnolencia)),
-                (
-                    x_vum_draw + x_vum,
-                    y_vum_draw + y_vum - int(y_vum_unit * self.MAX_WARNING),
-                ),
-                (0, 0, 255),
-                line_width,
-            )
-            self.log.debug(
-                f"Drowsiness level higher than warning but less than critical: {self.somnolencia}"
-            )
-        else:
-            frame = cv2.rectangle(
-                frame,
-                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * self.MAX_NORMAL)),
-                (x_vum_draw + x_vum, y_vum_draw + y_vum),
-                (0, 255, 0),
-                line_width,
-            )
-            frame = cv2.rectangle(
-                frame,
-                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * self.MAX_WARNING)),
-                (x_vum_draw + x_vum, y_vum_draw + y_vum - int(y_vum_unit * self.MAX_NORMAL)),
-                (0, 255, 255),
-                line_width,
-            )
-            frame = cv2.rectangle(
-                frame,
-                (
-                    x_vum_draw,
-                    y_vum_draw + y_vum - int(y_vum_unit * self.MAX_CRITICAL_VISUAL),
-                ),
-                (
-                    x_vum_draw + x_vum,
-                    y_vum_draw + y_vum - int(y_vum_unit * self.MAX_WARNING),
-                ),
-                (0, 0, 255),
-                line_width,
-            )
-            self.log.debug(f"Drowsiness level critical: {self.somnolencia}")
-
-        cv2.putText(
-            frame,
-            str(int(self.somnolencia)),
-            (
-                x_vum_draw + 30,
-                y_vum_draw
-                + y_vum
-                - int(y_vum_unit * min(self.somnolencia, self.MAX_CRITICAL_VISUAL))
-                + 5,
-            ),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.4,
-            (255, 255, 255),
-            1,
-        )
-
-        cv2.rectangle(
-            frame,
-            (x_vum_draw, y_vum_draw),
-            (x_vum_draw + x_vum, y_vum_draw + y_vum),
-            (255, 255, 255),
-            1,
-        )
-        cv2.putText(
-            frame,
-            "Medidor de",
-            (x_vum_draw - 35, y_vum_draw - 25),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            (255, 255, 255),
-            1,
-        )
-        cv2.putText(
-            frame,
-            "somnolencia",
-            (x_vum_draw - 35, y_vum_draw - 10),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            (255, 255, 255),
-            1,
-        )
-
-        return frame
 
 class Detector_posicion_cabeza(Motor_de_inferencia):
     def __init__(self, model_xml : str, model_bin : str, device : str, confidence_threshold : float, grades_threshold: int):

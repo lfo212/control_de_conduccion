@@ -11,10 +11,12 @@ class Frame:
         self.fps: int = 0
         self.fps_timestamp: int = 0
         self.counter: int = 0
+        self.success = False
+        self.img = None
 
     def new_frame(self) -> tuple:
         self.update_fps()
-        return self.video_cap.read()
+        self.success, self.img = self.video_cap.read()
     def update_fps(self) -> None:
         curr_timestamp = int(time())
         if curr_timestamp > self.fps_timestamp:
@@ -35,6 +37,12 @@ class COLORS(Enum):
     def list_values() -> list:
         return list(COLORS._value2member_map_.keys())
 class Imagen:
+
+    # Drowsiness levels
+    MAX_NORMAL = 20
+    MAX_WARNING = 50
+    MAX_CRITICAL = 70
+    MAX_CRITICAL_VISUAL = 100
 
     def __init__(self, parameters):
         if len(parameters) == 4:
@@ -100,6 +108,150 @@ class Imagen:
                 color,
                 -1
             )
+    
+    @staticmethod
+    def dibujar_medidor_de_somnolencia(somnolencia, frame, log):
+        _ , width, _ = frame.shape
+        x = 200 - 125
+        y = 125
+        x_vum = 20
+        y_vum = 150
+        y_vum_unit = 1.5
+        x_truck_i = width - (x + 10)
+        y_driver_i = y + 30
+        y_driver = y - 60
+        y_alarm = y_driver_i + y_driver + 10
+        x_vum_draw = x_truck_i + 15
+        y_vum_draw = y_alarm + 55
+        line_width = -1
+        if somnolencia <= Imagen.MAX_NORMAL:
+            frame = cv2.rectangle(
+                frame,
+                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * somnolencia)),
+                (x_vum_draw + x_vum, y_vum_draw + y_vum),
+                (0, 255, 0),
+                line_width,
+            )
+            log.debug(f"Drowsiness level is normal: {somnolencia}")
+        elif Imagen.MAX_NORMAL < somnolencia <= Imagen.MAX_WARNING:
+            frame = cv2.rectangle(
+                frame,
+                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * Imagen.MAX_NORMAL)),
+                (x_vum_draw + x_vum, y_vum_draw + y_vum),
+                (0, 255, 0),
+                line_width,
+            )
+            frame = cv2.rectangle(
+                frame,
+                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * somnolencia)),
+                (x_vum_draw + x_vum, y_vum_draw + y_vum - int(y_vum_unit * Imagen.MAX_NORMAL)),
+                (0, 255, 255),
+                line_width,
+            )
+            log.debug(
+                f"Drowsiness level higher than normal but less than warning: {somnolencia}"
+            )
+        elif Imagen.MAX_WARNING < somnolencia <= Imagen.MAX_CRITICAL:
+            frame = cv2.rectangle(
+                frame,
+                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * Imagen.MAX_NORMAL)),
+                (x_vum_draw + x_vum, y_vum_draw + y_vum),
+                (0, 255, 0),
+                line_width,
+            )
+            frame = cv2.rectangle(
+                frame,
+                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * Imagen.MAX_WARNING)),
+                (x_vum_draw + x_vum, y_vum_draw + y_vum - int(y_vum_unit * Imagen.MAX_NORMAL)),
+                (0, 255, 255),
+                line_width,
+            )
+            frame = cv2.rectangle(
+                frame,
+                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * somnolencia)),
+                (
+                    x_vum_draw + x_vum,
+                    y_vum_draw + y_vum - int(y_vum_unit * Imagen.MAX_WARNING),
+                ),
+                (0, 0, 255),
+                line_width,
+            )
+            log.debug(
+                f"Drowsiness level higher than warning but less than critical: {somnolencia}"
+            )
+        else:
+            frame = cv2.rectangle(
+                frame,
+                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * Imagen.MAX_NORMAL)),
+                (x_vum_draw + x_vum, y_vum_draw + y_vum),
+                (0, 255, 0),
+                line_width,
+            )
+            frame = cv2.rectangle(
+                frame,
+                (x_vum_draw, y_vum_draw + y_vum - int(y_vum_unit * Imagen.MAX_WARNING)),
+                (x_vum_draw + x_vum, y_vum_draw + y_vum - int(y_vum_unit * Imagen.MAX_NORMAL)),
+                (0, 255, 255),
+                line_width,
+            )
+            frame = cv2.rectangle(
+                frame,
+                (
+                    x_vum_draw,
+                    y_vum_draw + y_vum - int(y_vum_unit * Imagen.MAX_CRITICAL_VISUAL),
+                ),
+                (
+                    x_vum_draw + x_vum,
+                    y_vum_draw + y_vum - int(y_vum_unit * Imagen.MAX_WARNING),
+                ),
+                (0, 0, 255),
+                line_width,
+            )
+            log.debug(f"Drowsiness level critical: {somnolencia}")
+
+        cv2.putText(
+            frame,
+            str(int(somnolencia)),
+            (
+                x_vum_draw + 30,
+                y_vum_draw
+                + y_vum
+                - int(y_vum_unit * min(somnolencia, Imagen.MAX_CRITICAL_VISUAL))
+                + 5,
+            ),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.4,
+            (255, 255, 255),
+            1,
+        )
+
+        cv2.rectangle(
+            frame,
+            (x_vum_draw, y_vum_draw),
+            (x_vum_draw + x_vum, y_vum_draw + y_vum),
+            (255, 255, 255),
+            1,
+        )
+        cv2.putText(
+            frame,
+            "Medidor de",
+            (x_vum_draw - 35, y_vum_draw - 25),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (255, 255, 255),
+            1,
+        )
+        cv2.putText(
+            frame,
+            "somnolencia",
+            (x_vum_draw - 35, y_vum_draw - 10),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (255, 255, 255),
+            1,
+        )
+
+        return frame
 
 class Rostro():
 
