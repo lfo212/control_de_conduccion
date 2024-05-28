@@ -11,7 +11,7 @@ started = False
 
 CONFIG_FILE = 'config.json'
 TEST_VIDEOS_FOLDER = 'test_files'
-
+MEDIA_FOLDER = 'frontend/public/eventos'
 with open('config.json', 'r') as f:
     config = json.load(f)
 
@@ -31,6 +31,12 @@ def list_camera_devices():
             devices.append({'name': f"{device_name} ({device_path})", 'index': index})
     return devices
 
+
+@app.route('/media', methods=['GET'])
+def list_media():
+    files = os.listdir(MEDIA_FOLDER)
+    media_files = [f for f in files if f.endswith(('.png', '.jpg', '.jpeg', '.mp4', '.avi', '.mkv'))]
+    return jsonify(media_files)
 
 @app.route('/upload', methods=['PUT'])
 def upload_image():

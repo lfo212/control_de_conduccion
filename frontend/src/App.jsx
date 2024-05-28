@@ -6,6 +6,7 @@ import SettingsForm from './components/SettingsForm';
 import CommandLauncher from './components/CommandLauncher';
 import ConfigForm from './components/ConfigForm';
 import VideoPlayer from './components/VideoPlayer';
+import MediaList from './components/MediaList';
 
 const App = () => {
   const wsUrl1 = "ws://localhost:8765"; // WebSocket URL for the first stream
@@ -22,6 +23,7 @@ const App = () => {
         <div className="col-md-6">
           <ConfigForm />
           <CommandLauncher />
+          <MediaList />
           <UploadImage />
           <SettingsForm />
           <UserList />
