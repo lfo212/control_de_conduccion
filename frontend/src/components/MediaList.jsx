@@ -10,7 +10,7 @@ const MediaList = () => {
 
   useEffect(() => {
     const fetchMediaFiles = () => {
-      axios.get('/media')
+      axios.get('/eventos')
         .then(response => {
           setMediaFiles(response.data);
           setLoading(false);
@@ -60,11 +60,11 @@ const MediaList = () => {
         <div className="media-preview mt-4">
           {selectedMedia.endsWith('.mp4') || selectedMedia.endsWith('.mov') ? (
             <video width="480" height="360" controls>
-              <source src={`./eventos/${selectedMedia}`} type="video/mp4" />
+              <source src={`/eventos/${selectedMedia}`} type="video/mp4" />
               Formato no soportado.
             </video>
           ) : (
-            <img src={`./eventos/${selectedMedia}`} alt={selectedMedia} className="img-fluid" />
+            <img src={`/eventos/${selectedMedia}`} alt={selectedMedia} className="img-fluid" />
           )}
         </div>
       )}

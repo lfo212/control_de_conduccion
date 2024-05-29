@@ -7,11 +7,12 @@ RUN apt update -y && \
     apt install -y \
     cmake \
     libgl1-mesa-glx \
-    libgl1-mesa-dri
+    libgl1-mesa-dri \
+    ffmpeg
 
 COPY requirements.txt ./
 RUN pip3.8 install --no-cache-dir -r requirements.txt
-
+RUN mkdir eventos
 COPY . .
 
 # Make port 8765 and 8766 available to the world outside this container

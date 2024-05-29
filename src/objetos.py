@@ -1,9 +1,11 @@
 import cv2
 import math
 import numpy as np
+import ffmpeg
 
 from time import time
 from enum import Enum
+from collections import deque
 
 class Frame:
     def __init__(self, video_input: str):
@@ -13,10 +15,15 @@ class Frame:
         self.counter: int = 0
         self.success = False
         self.img = None
+        self.frame_queue = deque(maxlen=150) # cola con tamaño maximo de 150 frames, equivalente a 5 seg a 30 fps
 
     def new_frame(self) -> tuple:
         self.update_fps()
         self.success, self.img = self.video_cap.read()
+
+    def add_frame_list(self):
+        self.frame_queue.append(self.img)
+
     def update_fps(self) -> None:
         curr_timestamp = int(time())
         if curr_timestamp > self.fps_timestamp:
@@ -401,3 +408,46 @@ class Rostro():
         points.append((p2x, p2y))
 
         return points
+
+class Encoder:
+    def __init__(
+        self,
+        filename,
+        fps=7,
+        input_args={},
+        output_args={},
+    ):
+        self.filename = filename
+        self.process = None
+        self.input_args = input_args
+        self.output_args = output_args
+        self.input_args["framerate"] = fps if fps > 0 else 7
+        self.input_args["pix_fmt"] = "bgr24"
+        self.output_args["pix_fmt"] = "yuv420p"
+        self.output_args["vcodec"] = "libx264"
+
+    def add_frame(self, frame):
+        if self.process is None:
+            h, w = frame.shape[:2]
+            self.process = (
+                ffmpeg.input(
+                    "pipe:",
+                    format="rawvideo",
+                    s="{}x{}".format(w, h),
+                    **self.input_args
+                )
+                .output(self.filename, **self.output_args)
+                .overwrite_output()
+                .run_async(pipe_stdin=True)
+            )
+        self.process.stdin.write(frame.astype(np.uint8).tobytes())
+
+    def close(self):
+        if self.process is None:
+            return
+        self.process.stdin.close()
+        self.process.wait()
+
+    def add(self, frame):
+        #frame = blob2matrix(frame, width, height)
+        self.add_frame(frame)

@@ -11,7 +11,8 @@ started = False
 
 CONFIG_FILE = 'config.json'
 TEST_VIDEOS_FOLDER = 'test_files'
-MEDIA_FOLDER = 'frontend/public/eventos'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MEDIA_FOLDER = os.path.join(BASE_DIR, '../frontend/public/eventos')
 with open('config.json', 'r') as f:
     config = json.load(f)
 
@@ -32,11 +33,20 @@ def list_camera_devices():
     return devices
 
 
-@app.route('/media', methods=['GET'])
+@app.route('/eventos')
 def list_media():
     files = os.listdir(MEDIA_FOLDER)
     media_files = [f for f in files if f.endswith(('.png', '.jpg', '.jpeg', '.mp4', '.avi', '.mkv'))]
     return jsonify(media_files)
+
+@app.route('/eventos/<filename>')
+def get_media(filename):
+    print("ACA ESTOY: ", filename)
+    try:
+        return send_from_directory(MEDIA_FOLDER, filename)
+    except Exception as e:
+        print(e)
+        return str(e), 404
 
 @app.route('/upload', methods=['PUT'])
 def upload_image():

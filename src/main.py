@@ -1,14 +1,104 @@
 import cv2
 import motores_de_inferencia as mi
 import logging
-from objetos import Frame, Imagen, Rostro, COLORS
-from imutils import resize
-from json import load
-from multiprocessing import Process, Value, Manager
-from time import sleep
 import asyncio
 import websockets
 import base64
+import os
+from datetime import datetime
+from objetos import Frame, Imagen, Rostro, COLORS, Encoder
+from imutils import resize
+from json import load
+from multiprocessing import Process, Value, Manager
+from ctypes import c_char_p
+
+
+
+
+# def format_filename(message, use_case, label):
+#     """Format filename"""
+#     datetime_str = message["date"] + " " + message["time"]
+#     suffix = hashlib.sha256(datetime_str.encode("utf-8")).hexdigest()[:4]
+#     return f"{use_case}_{label}---{suffix}"
+
+
+# def ingestor_create_image_file(
+#     blob, filename, image_extension, local_storage, shape, rectangles
+# ):
+#     """Create image file in local storage"""
+#     file_path = os.path.join(
+#         local_storage, "saved_images", f"{filename}.{image_extension}"
+#     )
+#     if shape:
+#         # General conversion
+#         width, height, channels = shape
+#         frame = blob2matrix(blob, width, height, channels)
+#     else:
+#         # For CM use case
+#         mem_file = io.BytesIO()
+#         mem_file.write(json.loads(blob).encode("latin-1"))
+#         mem_file.seek(0)
+#         frame = np.load(mem_file)
+#         log.debug(f"TYPE: {type(frame)} SHAPE: {frame.shape}")
+#     if rectangles:
+#         for rectangle in rectangles:
+#             cv2.rectangle(frame, rectangle[0], rectangle[1], BGRColors.GREEN.value, 1)
+
+#     cv2.imwrite(file_path, frame)
+#     if os.path.exists(file_path):
+#         log.info(f"Image file created: {filename}")
+#     else:
+#         log.warn(f"Image file not created: {filename}")
+
+
+# def create_image(
+#     message,
+#     use_case,
+#     name_key,
+#     image_extension,
+#     local_storage,
+#     record_reponse_queue,
+#     rectangles,
+# ):
+#     blob = message["frame_blob"]
+#     shape = None if use_case == "CM" else [int(message["width"]), int(message["height"]), 3]
+#     filename = format_filename(message, use_case, name_key)
+#     ingestor_create_image_file(
+#         blob,
+#         filename,
+#         image_extension,
+#         local_storage,
+#         shape,
+#         rectangles,
+#     )
+#     record_reponse_queue.put(
+#         {
+#             "timestamp": int(datetime.now().timestamp()),
+#             "filename": filename,
+#             "extension": image_extension,
+#         }
+#     )
+
+def create_video_clip(
+    frame,
+    accion,
+    #conductor,
+    log
+):
+    utc_time = datetime.now()
+    utc_time.strftime("%Y-%m-%d-%H-%M-%S")
+    filename = (accion+"_"+str(utc_time)[:-7]).replace(" ","_")
+    file_path = os.path.join(
+        "eventos", filename+ ".mp4"
+    )
+    while not os.path.isfile(file_path):
+        video = Encoder(filename=file_path, fps=frame.fps)
+        for image in list(frame.frame_queue):
+            video.add(image)
+        video.close()
+    log.info(f"Video record finished: {filename}")
+
+#def registrar_evento()
 
 def dibujar_resultados(frame, configs, rostro, accion, log):
     input_height, input_width, _ = frame.img.shape
@@ -83,6 +173,7 @@ def camara_frontal(
         configs,
         distracted,
         accion,
+        #conductor,
         programa_finalizado,
         frame_frontal):
 
@@ -126,6 +217,7 @@ def camara_frontal(
                 imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(frame.img)
                 # Paralelizar el procesamiento de estos tres modelos
                 identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
+                #conductor.value = rostro.nombre.upper
                 rostro.somnolencia, rostro.alerta_somnolencia, rostro.somnolencia_critica = detector_de_rasgos_faciales.detectar_rasgos(imagen_rostro_recortado)
                 detector_posicion_cabeza.detectar_angulos_de_posicion(imagen_rostro_recortado)
                 distracted.value = rostro.distraccion_critica
@@ -146,12 +238,15 @@ def camara_frontal(
 def camara_lateral(configs,
         distracted,
         accion,
+        #conductor,
         programa_finalizado,
         frame_lateral):
     log = logging.getLogger("Camara lateral")
     show_fps = configs["show_fps"]
     color = COLORS.GREEN.value
     frame = Frame(configs["side_video_input"])
+    acciones = configs["acciones"]
+    accion_previa = None
     detector_de_acciones_encoder = mi.detector_acciones_encoder(
     configs["dar_model_xml_enc"],
     configs["dar_model_bin_enc"],
@@ -166,24 +261,28 @@ def camara_lateral(configs,
     )
     while not programa_finalizado.value:
         frame.new_frame()
+        frame.add_frame_list()
         if frame.success:
+            input_height, _, _ = frame.img.shape
             if distracted.value:
-                input_height, _, _ = frame.img.shape
                 detector_de_acciones_encoder.procesar_frame(frame.img)
                 action_index = detector_de_acciones_decoder.procesar_secuencia(detector_de_acciones_encoder.frame_queue)
                 accion.value = action_index
-                if show_fps:
-                    cv2.putText(
-                        frame.img,
-                        f"FPS: {frame.fps}",
-                        (10, input_height - 20),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        color,
-                        2,
-                    )
+                if bool(accion.value) and accion.value != accion_previa:
+                    accion_previa = accion.value
+                    create_video_clip(frame, acciones[accion.value], log)
             else:
                 accion.value = 0
+            if show_fps:
+                cv2.putText(
+                    frame.img,
+                    f"FPS: {frame.fps}",
+                    (10, input_height - 20),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    color,
+                    2,
+                )
             with frame_lateral["lock"]:
                 frame_lateral["img"] = frame.img
         else:
@@ -224,6 +323,7 @@ def main():
     distracted = Value('b', False)
     accion = Value('i', 0)
     programa_finalizado = Value('b', False)
+    #conductor = Value(c_char_p, "Desconocido")
     manager = Manager()
     frame_frontal = manager.dict()
     frame_lateral = manager.dict()
@@ -237,6 +337,7 @@ def main():
         configs,
         distracted,
         accion,
+        #conductor,
         programa_finalizado,
         frame_frontal))
     # Proceso que maneja la camara lateral
@@ -244,6 +345,7 @@ def main():
         configs,
         distracted,
         accion,
+        #conductor,
         programa_finalizado,
         frame_lateral))
     # Proceso que maneja el streaming de la camara frontal
