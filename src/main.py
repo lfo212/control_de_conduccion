@@ -7,98 +7,32 @@ import base64
 import os
 from datetime import datetime
 from objetos import Frame, Imagen, Rostro, COLORS, Encoder
-from imutils import resize
 from json import load
 from multiprocessing import Process, Value, Manager
-from ctypes import c_char_p
-
-
-
-
-# def format_filename(message, use_case, label):
-#     """Format filename"""
-#     datetime_str = message["date"] + " " + message["time"]
-#     suffix = hashlib.sha256(datetime_str.encode("utf-8")).hexdigest()[:4]
-#     return f"{use_case}_{label}---{suffix}"
-
-
-# def ingestor_create_image_file(
-#     blob, filename, image_extension, local_storage, shape, rectangles
-# ):
-#     """Create image file in local storage"""
-#     file_path = os.path.join(
-#         local_storage, "saved_images", f"{filename}.{image_extension}"
-#     )
-#     if shape:
-#         # General conversion
-#         width, height, channels = shape
-#         frame = blob2matrix(blob, width, height, channels)
-#     else:
-#         # For CM use case
-#         mem_file = io.BytesIO()
-#         mem_file.write(json.loads(blob).encode("latin-1"))
-#         mem_file.seek(0)
-#         frame = np.load(mem_file)
-#         log.debug(f"TYPE: {type(frame)} SHAPE: {frame.shape}")
-#     if rectangles:
-#         for rectangle in rectangles:
-#             cv2.rectangle(frame, rectangle[0], rectangle[1], BGRColors.GREEN.value, 1)
-
-#     cv2.imwrite(file_path, frame)
-#     if os.path.exists(file_path):
-#         log.info(f"Image file created: {filename}")
-#     else:
-#         log.warn(f"Image file not created: {filename}")
-
-
-# def create_image(
-#     message,
-#     use_case,
-#     name_key,
-#     image_extension,
-#     local_storage,
-#     record_reponse_queue,
-#     rectangles,
-# ):
-#     blob = message["frame_blob"]
-#     shape = None if use_case == "CM" else [int(message["width"]), int(message["height"]), 3]
-#     filename = format_filename(message, use_case, name_key)
-#     ingestor_create_image_file(
-#         blob,
-#         filename,
-#         image_extension,
-#         local_storage,
-#         shape,
-#         rectangles,
-#     )
-#     record_reponse_queue.put(
-#         {
-#             "timestamp": int(datetime.now().timestamp()),
-#             "filename": filename,
-#             "extension": image_extension,
-#         }
-#     )
 
 def create_video_clip(
     frame,
     accion,
-    #conductor,
+    conductor,
     log
 ):
     utc_time = datetime.now()
     utc_time.strftime("%Y-%m-%d-%H-%M-%S")
-    filename = (accion+"_"+str(utc_time)[:-7]).replace(" ","_")
+    filename = (conductor+"_"+accion+"_"+str(utc_time)[:-7]).replace(" ","_")
     file_path = os.path.join(
         "eventos", filename+ ".mp4"
     )
     while not os.path.isfile(file_path):
         video = Encoder(filename=file_path, fps=frame.fps)
         for image in list(frame.frame_queue):
-            video.add(image)
+            try:
+                video.add(image)
+            except Exception as e:
+                log.error(f"Error al crear el video: {e}")
+                video.close()
+                return            
         video.close()
     log.info(f"Video record finished: {filename}")
-
-#def registrar_evento()
 
 def dibujar_resultados(frame, configs, rostro, accion, log):
     input_height, input_width, _ = frame.img.shape
@@ -173,7 +107,7 @@ def camara_frontal(
         configs,
         distracted,
         accion,
-        #conductor,
+        conductor,
         programa_finalizado,
         frame_frontal):
 
@@ -217,7 +151,7 @@ def camara_frontal(
                 imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(frame.img)
                 # Paralelizar el procesamiento de estos tres modelos
                 identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
-                #conductor.value = rostro.nombre.upper
+                conductor[0] = rostro.nombre
                 rostro.somnolencia, rostro.alerta_somnolencia, rostro.somnolencia_critica = detector_de_rasgos_faciales.detectar_rasgos(imagen_rostro_recortado)
                 detector_posicion_cabeza.detectar_angulos_de_posicion(imagen_rostro_recortado)
                 distracted.value = rostro.distraccion_critica
@@ -238,7 +172,7 @@ def camara_frontal(
 def camara_lateral(configs,
         distracted,
         accion,
-        #conductor,
+        conductor,
         programa_finalizado,
         frame_lateral):
     log = logging.getLogger("Camara lateral")
@@ -261,7 +195,7 @@ def camara_lateral(configs,
     )
     while not programa_finalizado.value:
         frame.new_frame()
-        frame.add_frame_list()
+        frame.add_frame_to_queue()
         if frame.success:
             input_height, _, _ = frame.img.shape
             if distracted.value:
@@ -270,7 +204,7 @@ def camara_lateral(configs,
                 accion.value = action_index
                 if bool(accion.value) and accion.value != accion_previa:
                     accion_previa = accion.value
-                    create_video_clip(frame, acciones[accion.value], log)
+                    create_video_clip(frame, acciones[accion.value], conductor[0], log)
             else:
                 accion.value = 0
             if show_fps:
@@ -323,8 +257,9 @@ def main():
     distracted = Value('b', False)
     accion = Value('i', 0)
     programa_finalizado = Value('b', False)
-    #conductor = Value(c_char_p, "Desconocido")
     manager = Manager()
+    conductor = manager.list()
+    conductor.append("Desconocido")
     frame_frontal = manager.dict()
     frame_lateral = manager.dict()
     frame_frontal["img"] = None
@@ -332,12 +267,13 @@ def main():
     frame_lateral["img"] = None
     frame_lateral["lock"] = manager.Lock()
 
+
     # Proceso que maneja la camara frontal
     frontal_camera_process = Process(target=camara_frontal, args=(
         configs,
         distracted,
         accion,
-        #conductor,
+        conductor,
         programa_finalizado,
         frame_frontal))
     # Proceso que maneja la camara lateral
@@ -345,7 +281,7 @@ def main():
         configs,
         distracted,
         accion,
-        #conductor,
+        conductor,
         programa_finalizado,
         frame_lateral))
     # Proceso que maneja el streaming de la camara frontal

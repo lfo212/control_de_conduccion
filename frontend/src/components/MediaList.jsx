@@ -9,16 +9,16 @@ const MediaList = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchMediaFiles = () => {
-      axios.get('/eventos')
-        .then(response => {
-          setMediaFiles(response.data);
-          setLoading(false);
-        })
-        .catch(error => {
-          console.error('Error fetching media files:', error);
-          setLoading(false);
-        });
+    const fetchMediaFiles = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get('/eventos');
+        setMediaFiles(response.data);
+      } catch (error) {
+        console.error('Error fetching media files:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     // Fetch media files immediately when the component mounts
@@ -43,28 +43,30 @@ const MediaList = () => {
           <Spinner color="primary" />
         </div>
       ) : (
-        <ListGroup>
-          {mediaFiles.map((file, index) => (
-            <ListGroupItem 
-              key={index} 
-              action 
-              onClick={() => handleMediaClick(file)}
-              active={selectedMedia === file}
-            >
-              {file}
-            </ListGroupItem>
-          ))}
-        </ListGroup>
+        <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+          <ListGroup>
+            {mediaFiles.map((file, index) => (
+              <ListGroupItem
+                key={index}
+                action
+                onClick={() => handleMediaClick(file)}
+                active={selectedMedia === file}
+              >
+                {file}
+              </ListGroupItem>
+            ))}
+          </ListGroup>
+        </div>
       )}
       {selectedMedia && (
         <div className="media-preview mt-4">
           {selectedMedia.endsWith('.mp4') || selectedMedia.endsWith('.mov') ? (
-            <video width="480" height="360" controls>
+            <video key={selectedMedia} width="480" height="360" controls>
               <source src={`/eventos/${selectedMedia}`} type="video/mp4" />
               Formato no soportado.
             </video>
           ) : (
-            <img src={`/eventos/${selectedMedia}`} alt={selectedMedia} className="img-fluid" />
+            <img key={selectedMedia} src={`/eventos/${selectedMedia}`} alt={selectedMedia} className="img-fluid" />
           )}
         </div>
       )}

@@ -41,11 +41,9 @@ def list_media():
 
 @app.route('/eventos/<filename>')
 def get_media(filename):
-    print("ACA ESTOY: ", filename)
     try:
         return send_from_directory(MEDIA_FOLDER, filename)
     except Exception as e:
-        print(e)
         return str(e), 404
 
 @app.route('/upload', methods=['PUT'])

@@ -21,7 +21,7 @@ class Frame:
         self.update_fps()
         self.success, self.img = self.video_cap.read()
 
-    def add_frame_list(self):
+    def add_frame_to_queue(self):
         self.frame_queue.append(self.img)
 
     def update_fps(self) -> None:
