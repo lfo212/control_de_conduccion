@@ -23,7 +23,7 @@ services:
         - "/opt/altera:/opt/altera"
         - "${HOME}/.Xauthority:/tmp/host-xauth:ro"
         - "/tmp/.X11-unix:/tmp/.X11-unix"
-        - ./Certificates/rootca/cacert.pem:/run/secrets/rootca/cacert.pem
+        - "${PWD}/frontend/public/eventos:/eventos"
       privileged: true
       devices:
         - "/dev/:/dev/"

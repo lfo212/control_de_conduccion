@@ -24,7 +24,7 @@
     "conductor": "luciano fernandez",
     "drivers_photos": "imagenes_rostros_conductores",
     "front_video_input": 0,
-    "side_video_input": 2,
+    "side_video_input": "test_files/DAR_demo1.mp4",
     "device": "CPU",
     "confidence_threshold": 0.6,
     "head_grades_threshold": 30,
