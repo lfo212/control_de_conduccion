@@ -286,7 +286,12 @@ class Rostro():
             self.contador_distracciones = 0
             self.umbral_de_distraccion_critico = 5
             self.distraccion_critica = False
+            self.somnolencia_critica = False
             self.center = []
+            self.habilitado = False
+            self.location = {}
+            self.alerta_somnolencia = ""
+            self.somnolencia = 0
             Rostro.__shared_instance = self
     
     def actualizar_atributos(self, inference_result):

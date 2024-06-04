@@ -122,7 +122,7 @@ def store_driver_info():
     config_path = CONFIG_FILE
     with open(config_path, 'r') as f:
         config = json.load(f)
-    config['conductor'] = driver_name
+    config['conductor'] = driver_name.replace("_", " ")
     with open(config_path, 'w') as f:
         json.dump(config, f)
 
