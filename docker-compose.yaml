@@ -30,3 +30,21 @@ services:
       ports:
       - "8765:8765"
       - "8766:8766"
+  drivers_api:
+      build:
+        context: $PWD/drivers_endpoint
+        dockerfile: $PWD/drivers_endpoint/Dockerfile
+      image: drivers_api
+      container_name: drivers_api
+      hostname: drivers_api
+      read_only: false
+      healthcheck:
+          test: ["CMD-SHELL", "exit 0"]
+          interval: 5m
+      environment:
+        AppName: "drivers_api"
+      volumes:
+        - "/dev:/dev"
+      privileged: false
+      ports:
+      - "8000:8000"

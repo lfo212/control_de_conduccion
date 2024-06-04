@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from sqlalchemy import Column, Integer, String, LargeBinary, create_engine
+from sqlalchemy import Column, Integer, String, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 
 
