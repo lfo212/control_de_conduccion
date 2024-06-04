@@ -36,7 +36,10 @@ def create_video_clip(
 
 def dibujar_resultados(frame, configs, rostro, accion, log):
     input_height, input_width, _ = frame.img.shape
-    color = COLORS.RED.value if (rostro.distraccion_critica or rostro.somnolencia_critica) else COLORS.GREEN.value
+    color = COLORS.RED.value if (
+        rostro.distraccion_critica or
+        rostro.somnolencia_critica or
+        not rostro.habilitado) else COLORS.GREEN.value
     accion_string = configs["acciones"][accion.value]
     if configs["show_face"]:
         cv2.rectangle(
@@ -62,7 +65,7 @@ def dibujar_resultados(frame, configs, rostro, accion, log):
     if configs["show_name"]:
         cv2.putText(
             frame.img,
-            f"NOMBRE: {rostro.nombre.upper()}",
+            f"NOMBRE: {rostro.nombre.upper()} {'(conduccion habilitada)' if rostro.habilitado else '(no habilitado)'}",
             (10, int(input_height / 15)*11),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.5,
@@ -152,6 +155,7 @@ def camara_frontal(
                 # Paralelizar el procesamiento de estos tres modelos
                 identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
                 conductor[0] = rostro.nombre
+                rostro.habilitado = rostro.nombre == configs["conductor"]
                 rostro.somnolencia, rostro.alerta_somnolencia, rostro.somnolencia_critica = detector_de_rasgos_faciales.detectar_rasgos(imagen_rostro_recortado)
                 detector_posicion_cabeza.detectar_angulos_de_posicion(imagen_rostro_recortado)
                 distracted.value = rostro.distraccion_critica

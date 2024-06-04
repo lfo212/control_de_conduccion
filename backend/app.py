@@ -11,13 +11,11 @@ started = False
 
 CONFIG_FILE = 'config.json'
 TEST_VIDEOS_FOLDER = 'test_files'
+DRIVERS_PHOTOS = "imagenes_rostros_conductores"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MEDIA_FOLDER = os.path.join(BASE_DIR, '../frontend/public/eventos')
 with open('config.json', 'r') as f:
     config = json.load(f)
-
-# Simular una base de datos de usuarios
-users = [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
 
 def list_video_files():
     return [f for f in os.listdir(TEST_VIDEOS_FOLDER) if f.endswith(('.mp4', '.avi', '.mkv'))]
@@ -59,20 +57,6 @@ def upload_image():
     file.save(f"./uploads/{file.filename}")
     return "Image uploaded successfully", 200
 
-@app.route('/users', methods=['GET'])
-def get_users():
-    return jsonify(users), 200
-
-@app.route('/settings', methods=['POST'])
-def set_settings():
-    setting = request.json.get('setting')
-    if not setting:
-        return "Invalid setting", 400
-
-    # Guardar la configuración en el servidor (simulado)
-    print(f"Setting saved: {setting}")
-    return "Setting saved successfully", 200
-
 def execute_makefile_rule(rule):
     # Execute the specified rule from the Makefile
     result = subprocess.run(['make', '-f', "Makefile", rule], capture_output=True, text=True)
@@ -103,7 +87,6 @@ def get_config():
         'camera_devices': camera_devices
     })
 
-
 @app.route('/save_config', methods=['POST'])
 def save_config():
     new_config = request.json
@@ -126,6 +109,24 @@ def save_config():
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=4)
     return jsonify({'status': 'success'})
+
+@app.route('/store_driver_info', methods=['POST'])
+def store_driver_info():
+    driver_name = request.form['driver_name']
+    photo = request.files['photo']
+
+    # Save the photo
+    photo_path = os.path.join(DRIVERS_PHOTOS, f"chofer_{photo.filename}")
+    photo.save(photo_path)
+    # Update config.json
+    config_path = CONFIG_FILE
+    with open(config_path, 'r') as f:
+        config = json.load(f)
+    config['conductor'] = driver_name.replace("_", " ")
+    with open(config_path, 'w') as f:
+        json.dump(config, f)
+
+    return jsonify({'message': 'Informacion del conductor almacenada correctamente'}), 200
 
 
 @app.route('/')

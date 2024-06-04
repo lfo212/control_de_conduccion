@@ -12,6 +12,7 @@ const Toast = ({ message, show, onClose }) => {
         top: '20px',
         right: '20px',
         minWidth: '200px',
+        zIndex: 1000,
       }}
     >
       <div className="toast-header">
