@@ -9,6 +9,7 @@ from datetime import datetime
 from objetos import Frame, Imagen, Rostro, COLORS, Encoder
 from json import load
 from multiprocessing import Process, Value, Manager
+import concurrent.futures
 
 def create_video_clip(
     frame,
@@ -105,7 +106,6 @@ def dibujar_resultados(frame, configs, rostro, accion, log):
             2,
         )
 
-
 def camara_frontal(
         configs,
         distracted,
@@ -114,11 +114,13 @@ def camara_frontal(
         programa_finalizado,
         frame_frontal):
 
+    log = logging.getLogger("Camara Frontal")
     device = configs["device"]
     confidence_threshold = configs["confidence_threshold"]
-    log = logging.getLogger("Camara Frontal")
+    rostro = Rostro.getInstance()
+    frame = Frame(configs["front_video_input"])
 
-    # Creamos los motores de inferencia
+    #Creamos los motores de inferencia
     detector_de_rostros = mi.Detector_de_rostros(
         configs["dr_model_xml"],
         configs["dr_model_bin"],
@@ -141,29 +143,35 @@ def camara_frontal(
         confidence_threshold,
         configs["head_grades_threshold"]
     )
-    
-    identificador_de_rostros.generar_base_de_datos_de_choferes(configs["drivers_photos"])
-    frame = Frame(configs["front_video_input"])
-    rostro = Rostro.getInstance()
 
+    # Generamos base de datos de choferes
+    identificador_de_rostros.generar_base_de_datos_de_choferes(configs["drivers_photos"])
+
+
+    # Thread pool executor for running tasks concurrently
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
     while True:
         frame.new_frame()
         if frame.success:
             detector_de_rostros.procesar_frame(frame.img)
             if rostro.rostro_detectado:
-                imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(frame.img)
-                # Paralelizar el procesamiento de estos tres modelos
-                identificador_de_rostros.obtener_nombre_conductor(imagen_rostro_recortado)
+                frame.imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(frame.img)
+                # Ejecuto la inferencia del resto de modelos de forma concurrente
+                # Launch the inference tasks concurrently
+                futures = []
+                futures.append(executor.submit(identificador_de_rostros.obtener_nombre_conductor, frame))
+                futures.append(executor.submit(detector_de_rasgos_faciales.detectar_rasgos, frame))
+                futures.append(executor.submit(detector_posicion_cabeza.detectar_angulos_de_posicion, frame))
+
+                # Wait for all tasks to complete
+                concurrent.futures.wait(futures)
+                # Proceso los resultados
                 conductor[0] = rostro.nombre
                 rostro.habilitado = rostro.nombre == configs["conductor"]
-                rostro.somnolencia, rostro.alerta_somnolencia, rostro.somnolencia_critica = detector_de_rasgos_faciales.detectar_rasgos(imagen_rostro_recortado)
-                detector_posicion_cabeza.detectar_angulos_de_posicion(imagen_rostro_recortado)
                 distracted.value = rostro.distraccion_critica
-                
                 dibujar_resultados(frame, configs, rostro, accion, log)
             with frame_frontal["lock"]:
                 frame_frontal["img"] = frame.img
-
             frame.new_frame()
         else:
             try:
@@ -251,12 +259,14 @@ async def send_frame(
 
 def main():
 
-    #logging.basicConfig(level=logging.INFO)  # Set logging level to INFO
+    logging.basicConfig(level=logging.INFO)  # Set logging level to INFO
 
     configs = {}
     # Cargamos configuraciones de json
     with open("config.json") as configs_file:
         configs = load(configs_file)
+    device = configs["device"]
+    confidence_threshold = configs["confidence_threshold"]
     #Declaramos variables compartidas
     distracted = Value('b', False)
     accion = Value('i', 0)
@@ -270,7 +280,6 @@ def main():
     frame_frontal["lock"] = manager.Lock()
     frame_lateral["img"] = None
     frame_lateral["lock"] = manager.Lock()
-
 
     # Proceso que maneja la camara frontal
     frontal_camera_process = Process(target=camara_frontal, args=(

@@ -48,3 +48,8 @@ services:
       privileged: false
       ports:
       - "8000:8000"
+      deploy:
+        resources:
+          limits:
+            cpus: "1"
+            memory: "1G"

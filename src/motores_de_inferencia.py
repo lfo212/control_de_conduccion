@@ -5,7 +5,7 @@ import numpy as np
 import dlib
 
 from openvino.inference_engine import IECore
-from objetos import Imagen, Rostro, COLORS
+from objetos import Imagen, Rostro, Frame
 from imutils import paths, face_utils
 from scipy import spatial
 from time import time
@@ -96,14 +96,6 @@ class Detector_de_rostros(Motor_de_inferencia):
         
 class Identificador_de_rostros(Motor_de_inferencia):
 
-    """
-    def redimensionar_imagen(self, frame):
-        resized_frame = cv2.resize(frame, (self.image_prop.width, self.image_prop.height))
-
-        # reshape to network input shape
-        # Change data layout from HWC to CHW
-        return expand_dims(resized_frame.transpose(2, 0, 1), 0)
-    """
     def procesar_frame(self, frame) -> list:
         return [x[0][0] for x in list(super().procesar_frame(frame)[0])]
 
@@ -122,15 +114,18 @@ class Identificador_de_rostros(Motor_de_inferencia):
             if imagen is not None:
                 self.choferes_dict[name] = self.procesar_frame(imagen)
     
-    def obtener_nombre_conductor(self, frame):
+    def obtener_nombre_conductor(self, frame: Frame):
         self.rostro = Rostro.getInstance()
         if self.rostro.nombre == "DESCONOCIDO":
-            new_vector = self.procesar_frame(frame)
-            for name, vector in self.choferes_dict.items():
-                result = 1 - spatial.distance.cosine(vector, new_vector)
-                if result >= self.confidence_threshold:
-                    self.rostro.nombre = name
-                    break
+            if frame.imagen_rostro_recortado.any():
+                new_vector = self.procesar_frame(frame.imagen_rostro_recortado)
+                for name, vector in self.choferes_dict.items():
+                    result = 1 - spatial.distance.cosine(vector, new_vector)
+                    if result >= self.confidence_threshold:
+                        self.rostro.nombre = name
+                        break
+            else:
+                self.log.debug("No hay imagen para detectar")
 
 class Detector_rasgos_faciales():
     
@@ -170,18 +165,21 @@ class Detector_rasgos_faciales():
         self.log.debug("Config reading completed...")
         self.predictor = dlib.shape_predictor(model)
 
-    def detectar_rasgos(self, rostro_recortado) -> dict:
-        rostro = Rostro.getInstance()
-        shape = self.predictor(rostro_recortado, self.convert_to_dlib_rect(rostro_recortado))
-        shape = face_utils.shape_to_np(shape)
-        shape = rostro.actualizar_referencia_lista(shape)
-        rostro.ojo_izquierdo = shape[36:42]
-        rostro.ojo_derecho = shape[42:48]
-        rostro.boca = shape[48:59][::2]
-        self.calcular_ear(rostro)
-        self.calcular_mar(rostro)
-        nivel_somnolencia = self.calcular_somnolencia()
-        return self.somnolencia, self.SLEEP_MESSAGE[nivel_somnolencia], nivel_somnolencia==3
+    def detectar_rasgos(self, frame: Frame) -> dict:
+        if frame.imagen_rostro_recortado.any():
+            rostro = Rostro.getInstance()
+            shape = self.predictor(frame.imagen_rostro_recortado, self.convert_to_dlib_rect(frame.imagen_rostro_recortado))
+            shape = face_utils.shape_to_np(shape)
+            shape = rostro.actualizar_referencia_lista(shape)
+            rostro.ojo_izquierdo = shape[36:42]
+            rostro.ojo_derecho = shape[42:48]
+            rostro.boca = shape[48:59][::2]
+            self.calcular_ear(rostro)
+            self.calcular_mar(rostro)
+            nivel_somnolencia = self.calcular_somnolencia()
+            rostro.somnolencia, rostro.alerta_somnolencia, rostro.somnolencia_critica = [self.somnolencia, self.SLEEP_MESSAGE[nivel_somnolencia], nivel_somnolencia==3]
+        else:
+            self.log.debug("No hay imagen para detectar")
         
 
     def convert_to_dlib_rect(self, frame):
@@ -307,10 +305,13 @@ class Detector_posicion_cabeza(Motor_de_inferencia):
     def procesar_frame(self, frame):
         self.rostro.pitch_angle, self.rostro.roll_angle, self.rostro.yaw_angle = super().procesar_frame(frame)
 
-    def detectar_angulos_de_posicion(self, frame):
-        self.rostro = Rostro.getInstance()
-        self.procesar_frame(frame)
-        self.rostro.distraccion_critica = self.distraccion_critica()
+    def detectar_angulos_de_posicion(self, frame: Frame):
+        if frame.imagen_rostro_recortado.any():
+            self.rostro = Rostro.getInstance()
+            self.procesar_frame(frame.imagen_rostro_recortado)
+            self.rostro.distraccion_critica = self.distraccion_critica()
+        else:
+            self.log.debug("No hay imagen para detectar")
 
 class detector_acciones_encoder(Motor_de_inferencia):
 

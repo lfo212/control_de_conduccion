@@ -16,6 +16,7 @@ class Frame:
         self.success = False
         self.img = None
         self.frame_queue = deque(maxlen=150) # cola con tamaño maximo de 150 frames, equivalente a 5 seg a 30 fps
+        self.imagen_rostro_recortado = np.array(0)
 
     def new_frame(self) -> tuple:
         self.update_fps()
