@@ -149,7 +149,7 @@ def camara_frontal(
 
 
     # Thread pool executor for running tasks concurrently
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
     while True:
         frame.new_frame()
         if frame.success:
@@ -157,7 +157,6 @@ def camara_frontal(
             if rostro.rostro_detectado:
                 frame.imagen_rostro_recortado = Imagen.obtener_imagen_rostro_recortado(frame.img)
                 # Ejecuto la inferencia del resto de modelos de forma concurrente
-                # Launch the inference tasks concurrently
                 futures = []
                 futures.append(executor.submit(identificador_de_rostros.obtener_nombre_conductor, frame))
                 futures.append(executor.submit(detector_de_rasgos_faciales.detectar_rasgos, frame))
