@@ -145,7 +145,7 @@ def camara_frontal(
     )
 
     # Generamos base de datos de choferes
-    identificador_de_rostros.generar_base_de_datos_de_choferes(configs["drivers_photos"])
+    identificador_de_rostros.generar_base_de_datos_de_choferes(configs["drivers_photos"], detector_de_rostros)
 
 
     # Thread pool executor for running tasks concurrently

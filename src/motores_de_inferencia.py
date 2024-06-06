@@ -99,7 +99,11 @@ class Identificador_de_rostros(Motor_de_inferencia):
     def procesar_frame(self, frame) -> list:
         return [x[0][0] for x in list(super().procesar_frame(frame)[0])]
 
-    def generar_base_de_datos_de_choferes(self, directorio_imagenes_choferes : str):
+    def generar_base_de_datos_de_choferes(
+            self,
+            directorio_imagenes_choferes : str,
+            detector_de_rostros: Detector_de_rostros
+            ):
         self.choferes_dict = {}
         for image_path in paths.list_images(directorio_imagenes_choferes):
             name = os.path.basename(image_path).split(".")[0]
@@ -108,6 +112,8 @@ class Identificador_de_rostros(Motor_de_inferencia):
             name = name.replace("_", " ")
             try:
                 imagen = cv2.imdecode(np.fromfile(image_path, dtype=np.uint8), cv2.IMREAD_COLOR)
+                detector_de_rostros.procesar_frame(imagen)
+                imagen = Imagen.obtener_imagen_rostro_recortado(imagen)
             except (IOError, cv2.error):
                 imagen = None
                 self.log.warning(f"Archivo invalido: {image_path}")
