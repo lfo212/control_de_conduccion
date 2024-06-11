@@ -35,7 +35,7 @@ def create_video_clip(
         video.close()
     log.info(f"Video record finished: {filename}")
 
-def dibujar_resultados(frame, configs, rostro, accion, log):
+def graficar_resultados(frame, configs, rostro, accion, log):
     input_height, input_width, _ = frame.img.shape
     color = COLORS.RED.value if (
         rostro.distraccion_critica or
@@ -162,13 +162,13 @@ def camara_frontal(
                 futures.append(executor.submit(detector_de_rasgos_faciales.detectar_rasgos, frame))
                 futures.append(executor.submit(detector_posicion_cabeza.detectar_angulos_de_posicion, frame))
 
-                # Wait for all tasks to complete
+                # Espero a que todas las tareas se completen
                 concurrent.futures.wait(futures)
                 # Proceso los resultados
                 conductor[0] = rostro.nombre
                 rostro.habilitado = rostro.nombre == configs["conductor"]
                 distracted.value = rostro.distraccion_critica
-                dibujar_resultados(frame, configs, rostro, accion, log)
+                graficar_resultados(frame, configs, rostro, accion, log)
             with frame_frontal["lock"]:
                 frame_frontal["img"] = frame.img
             frame.new_frame()
