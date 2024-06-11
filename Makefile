@@ -18,7 +18,9 @@ start: 	download_models
 	docker-compose build control_de_manejo
 	docker-compose up -d control_de_manejo
 stop:
-	docker-compose down
+	docker-compose down control_de_manejo
+stop-api:
+	docker-compose down drivers_api
 webui:
 	docker-compose build drivers_api
 	docker-compose up -d drivers_api
