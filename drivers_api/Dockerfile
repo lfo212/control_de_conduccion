@@ -9,4 +9,4 @@ COPY . .
 # Make port 8000 available outside this container
 EXPOSE 8000
 
-ENTRYPOINT ["uvicorn", "drivers_endpoint:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+ENTRYPOINT ["uvicorn", "drivers_api:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

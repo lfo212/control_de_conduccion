@@ -264,8 +264,6 @@ def main():
     # Cargamos configuraciones de json
     with open("config.json") as configs_file:
         configs = load(configs_file)
-    device = configs["device"]
-    confidence_threshold = configs["confidence_threshold"]
     #Declaramos variables compartidas
     distracted = Value('b', False)
     accion = Value('i', 0)
@@ -296,13 +294,13 @@ def main():
         conductor,
         programa_finalizado,
         frame_lateral))
-    # Proceso que maneja el streaming de la camara frontal
+    # Tarea que maneja el streaming de la camara frontal
     start_server_frontal = websockets.serve(
         lambda ws, path: send_frame(ws, path, frame_frontal),
         "0.0.0.0",
         8765
     )
-    # Proceso que maneja el streaming de la camara lateral
+    # Tarea que maneja el streaming de la camara lateral
     start_server_lateral = websockets.serve(
         lambda ws, path: send_frame(ws, path, frame_lateral),
         "0.0.0.0",

@@ -32,8 +32,8 @@ services:
       - "8766:8766"
   drivers_api:
       build:
-        context: $PWD/drivers_endpoint
-        dockerfile: $PWD/drivers_endpoint/Dockerfile
+        context: $PWD/drivers_api
+        dockerfile: $PWD/drivers_api/Dockerfile
       image: drivers_api
       container_name: drivers_api
       hostname: drivers_api
