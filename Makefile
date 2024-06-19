@@ -14,16 +14,17 @@ download_models:
 	$(SCRIPTS)/descargar_modelo_action_recognition.sh driver-action-recognition-adas-0002
 	$(SCRIPTS)/descargar_dlib_model.sh
 start: 	download_models
-	docker-compose down control_de_manejo
-	docker-compose build control_de_manejo
-	docker-compose up -d control_de_manejo
+	-docker-compose -f docker-compose-app.yaml down
+	docker-compose -f docker-compose-app.yaml build control_de_manejo
+	docker-compose -f docker-compose-app.yaml up -d control_de_manejo
 stop:
-	docker-compose down control_de_manejo
+	docker-compose -f docker-compose-app.yaml stop
 stop-api:
-	docker-compose down drivers_api
+	docker-compose -f docker-compose-api.yaml down --remove-orphans
 webui:
-	docker-compose build drivers_api
-	docker-compose up -d drivers_api
+	docker-compose -f docker-compose-app.yaml down --remove-orphans
+	docker-compose -f docker-compose-api.yaml build drivers_api
+	docker-compose -f docker-compose-api.yaml up -d drivers_api
 	@xhost + > /dev/null
 	@# Activate virtual env and Launch WebUI
 	@sudo $(SHELL) -c '$(VE) && python3 backend/app.py'

@@ -79,13 +79,13 @@ def get_driver_photo(driver_id: int, db: Session = Depends(get_db)):
 def delete_driver(driver_id: int, db: Session = Depends(get_db)):
     driver = db.query(DriverModel).filter(DriverModel.id == driver_id).first()
     if not driver:
-        raise HTTPException(status_code=404, detail="Driver not found")
+        raise HTTPException(status_code=404, detail="Conductor no encontrado")
     db.delete(driver)
     db.commit()
-    return {"message": "Driver deleted successfully"}
+    return {"message": "Conductor eliminado con exito"}
 
 @app.delete("/delete_all_drivers")
 def delete_all_drivers(db: Session = Depends(get_db)):
     db.query(DriverModel).delete()
     db.commit()
-    return {"message": "All drivers deleted successfully"}
+    return {"message": "Todos los conductores eliminados con exito"}

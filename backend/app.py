@@ -44,19 +44,6 @@ def get_media(filename):
     except Exception as e:
         return str(e), 404
 
-@app.route('/upload', methods=['PUT'])
-def upload_image():
-    if 'image' not in request.files:
-        return "No image part", 400
-
-    file = request.files['image']
-    if file.filename == '':
-        return "No selected file", 400
-
-    # Guardar la imagen en el servidor
-    file.save(f"./uploads/{file.filename}")
-    return "Image uploaded successfully", 200
-
 def execute_makefile_rule(rule):
     # Execute the specified rule from the Makefile
     result = subprocess.run(['make', '-f', "Makefile", rule], capture_output=True, text=True)
