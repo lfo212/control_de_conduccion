@@ -5,6 +5,12 @@ SHELL := /bin/bash
 
 VE=source $(REPO_FOLDER)/$(UC_VIRTUAL_ENV)/bin/activate
 
+install: download_models
+	python3 -m venv $(UC_VIRTUAL_ENV) && $(VE) && pip3 install -r requirements-webui.txt
+	cd frontend && npm install && npm run build && cd ..
+	mkdir -p frontend/public/eventos
+	mkdir -p test_files
+
 download_models:
 	sudo chmod 775 -R $(SCRIPTS)
 	$(SCRIPTS)/descargar_modelo.sh face-detection-retail-0004
@@ -13,7 +19,8 @@ download_models:
 	$(SCRIPTS)/descargar_modelo.sh face-reidentification-retail-0095
 	$(SCRIPTS)/descargar_modelo_action_recognition.sh driver-action-recognition-adas-0002
 	$(SCRIPTS)/descargar_dlib_model.sh
-start: 	download_models
+	sudo chmod 775 -R modelos
+start:
 	-docker-compose -f docker-compose-app.yaml down
 	docker-compose -f docker-compose-app.yaml build control_de_manejo
 	docker-compose -f docker-compose-app.yaml up -d control_de_manejo
