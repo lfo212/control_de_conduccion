@@ -46,9 +46,39 @@ def get_media(filename):
 
 def execute_makefile_rule(rule):
     # Execute the specified rule from the Makefile
-    result = subprocess.run(['make', '-f', "Makefile", rule], capture_output=True, text=True)
-    print(result.returncode)
-    return (result.stdout.strip(), result.returncode) if result.returncode == 0 else (result.stderr.strip(), result.returncode)
+    # result = subprocess.run(['make', '-f', "Makefile", rule], capture_output=True, text=True)
+    # print(result.returncode)
+    # return (result.stdout.strip(), result.returncode) if result.returncode == 0 else (result.stderr.strip(), result.returncode)
+    # Execute the specified rule from the Makefile
+    process = subprocess.Popen(['make', '-f', 'Makefile', rule], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    
+    stdout_lines = []
+    stderr_lines = []
+    
+    # Read the output line by line
+    while True:
+        stdout_line = process.stdout.readline()
+        stderr_line = process.stderr.readline()
+        
+        if stdout_line:
+            print(stdout_line, end='')  # Print to console
+            stdout_lines.append(stdout_line)
+        
+        if stderr_line:
+            print(stderr_line, end='')  # Print to console
+            stderr_lines.append(stderr_line)
+        
+        if stdout_line == '' and stderr_line == '' and process.poll() is not None:
+            break
+
+    returncode = process.poll()
+    stdout_output = ''.join(stdout_lines).strip()
+    stderr_output = ''.join(stderr_lines).strip()
+    
+    if returncode == 0:
+        return stdout_output, returncode
+    else:
+        return stderr_output, returncode
 
 @app.route('/toggle_command', methods=['POST'])
 def toggle_command():
