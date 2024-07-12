@@ -293,7 +293,8 @@ class Detector_posicion_cabeza(Motor_de_inferencia):
     def conductor_distraido(self):
         if abs(self.rostro.yaw_angle) > self.grados_limite or abs(self.rostro.pitch_angle) > self.grados_limite:
             return True
-        return False
+        else:
+            return False
 
     def distraccion_critica(self):
         ret = False
@@ -309,7 +310,7 @@ class Detector_posicion_cabeza(Motor_de_inferencia):
         return list(self.execution_net.outputs.keys())
 
     def procesar_frame(self, frame):
-        self.rostro.pitch_angle, self.rostro.roll_angle, self.rostro.yaw_angle = super().procesar_frame(frame)
+        self.rostro.pitch_angle, self.rostro.roll_angle, self.rostro.yaw_angle = (float(angle[0][0]) for angle in super().procesar_frame(frame))
 
     def detectar_angulos_de_posicion(self, frame: Frame):
         if frame.imagen_rostro_recortado.any():

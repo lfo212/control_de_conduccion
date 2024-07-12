@@ -40,6 +40,7 @@ def graficar_resultados(frame, configs, rostro, accion, log):
     color = COLORS.RED.value if (
         rostro.distraccion_critica or
         rostro.somnolencia_critica or
+        bool(accion.value) or
         not rostro.habilitado) else COLORS.GREEN.value
     accion_string = configs["acciones"][accion.value]
     if configs["show_face"]:
@@ -53,7 +54,7 @@ def graficar_resultados(frame, configs, rostro, accion, log):
     if configs["show_posicion_cabeza"]:
         puntos_de_rotacion = rostro.obtener_puntos_rotacion(input_height, input_width, rostro.location)
         Imagen.dibujar_posicion_cabeza(puntos_de_rotacion, rostro.center, frame.img)
-    if rostro.distraccion_critica:
+    if rostro.distraccion_critica or bool(accion.value):
         cv2.putText(
             frame.img,
             "DISTRACCION CRITICA",
@@ -116,7 +117,7 @@ def camara_frontal(
 
     log = logging.getLogger("Camara Frontal")
     device = configs["device"]
-    confidence_threshold = configs["confidence_threshold"]
+    confidence_threshold = float(configs["confidence_threshold"])
     rostro = Rostro.getInstance()
     frame = Frame(configs["front_video_input"])
 
@@ -141,7 +142,7 @@ def camara_frontal(
         configs["dpc_model_bin"],
         device,
         confidence_threshold,
-        configs["head_grades_threshold"]
+        float(configs["head_grades_threshold"])
     )
 
     # Generamos base de datos de choferes
