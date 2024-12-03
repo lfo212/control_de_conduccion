@@ -4,5 +4,5 @@ openvino==2022.1.0
 scipy
 numpy
 pydantic
-websockets
+websockets==12
 ffmpeg-python

@@ -170,6 +170,8 @@ def camara_frontal(
                 rostro.habilitado = rostro.nombre == configs["conductor"]
                 distracted.value = rostro.distraccion_critica
                 graficar_resultados(frame, configs, rostro, accion, log)
+            # cv2.imshow('Processed Frame', frame.img)
+            # cv2.waitKey(1)
             with frame_frontal["lock"]:
                 frame_frontal["img"] = frame.img
             frame.new_frame()
@@ -231,6 +233,8 @@ def camara_lateral(configs,
                 )
             with frame_lateral["lock"]:
                 frame_lateral["img"] = frame.img
+            # cv2.imshow('Lateral Frame', frame.img)
+            # cv2.waitKey(1)
         else:
             frame.video_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
     frame.release()
@@ -243,17 +247,26 @@ async def send_frame(
 ):
     log = logging.getLogger("Send frame")
     while True:
-        with data["lock"]:
-            if data["img"] is not None:
-                _, buffer = cv2.imencode('.jpg', data["img"])
-                frame_encoded = base64.b64encode(buffer).decode('utf-8')
-                try:
-                    await websocket.send(frame_encoded)
-                except websockets.exceptions.ConnectionClosed:
-                    log.error("WebSocket connection closed")
-                    break
-
-            await asyncio.sleep(0.033)
+        try:
+            with data["lock"]:
+                if data["img"] is not None:
+                    log.debug("Encoding and sending frame...")
+                    _, buffer = cv2.imencode('.jpg', data["img"])
+                    frame_encoded = base64.b64encode(buffer).decode('utf-8')
+                    await asyncio.wait_for(websocket.send(frame_encoded), timeout=5)
+                    log.debug("Frame sent successfully")
+                else:
+                    log.debug("No image available, skipping frame")
+                await asyncio.sleep(0.033)
+        except websockets.exceptions.ConnectionClosed:
+            log.debug("WebSocket connection closed")
+            break
+        except asyncio.TimeoutError:
+            log.warning("WebSocket send timed out")
+            break
+        except Exception as e:
+            log.error(f"Unexpected error: {e}")
+            break
     log.info("Proceso terminado")
 
 
