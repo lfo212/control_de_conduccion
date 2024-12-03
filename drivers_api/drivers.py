@@ -22,3 +22,7 @@ class DriverModel(Base):
     driver_name = Column(String, index=True)
     driver_id = Column(String, unique=True, index=True)
     photo = Column(LargeBinary)
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str

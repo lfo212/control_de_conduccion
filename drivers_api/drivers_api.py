@@ -1,14 +1,15 @@
-from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, Response, Cookie
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List
-from drivers import Driver, DriverModel, Base
+from drivers import Driver, DriverModel, Base, LoginRequest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import shutil
 import io
 
+SECRET_TOKEN = "secret-token"
 DATABASE_URL = "sqlite:///./drivers.db"
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -18,7 +19,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://127.0.0.1:5000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -89,3 +90,23 @@ def delete_all_drivers(db: Session = Depends(get_db)):
     db.query(DriverModel).delete()
     db.commit()
     return {"message": "Todos los conductores eliminados con exito"}
+
+@app.post("/api/login")
+def login(response: Response, request: LoginRequest):
+    if request.username == "admin" and request.password == "admin":
+        response.set_cookie(
+            key="authToken",
+            value=SECRET_TOKEN,
+            httponly=True,
+            secure=False,
+            samesite="None",
+            max_age=3600,
+        )
+        return {"message": "Login successful"}
+    raise HTTPException(status_code=401, detail="Invalid credentials")
+
+@app.get("/api/validate-token")
+def validate_token(authToken: str = Cookie(None)):
+    if authToken == SECRET_TOKEN:
+        return {"valid": True}
+    raise HTTPException(status_code=401, detail="Invalid token")
