@@ -11,7 +11,9 @@ const SelectDriver = () => {
   useEffect(() => {
     const fetchDrivers = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/drivers_list/');
+        const response = await axios.get('https://localhost:8000/drivers_list/', {
+          withCredentials: true,  // Include cookies (including authToken)
+        });
         setDrivers(response.data);
       } catch (error) {
         setError('Error obteniendo conductores');
@@ -26,8 +28,9 @@ const SelectDriver = () => {
 
     try {
       // Fetch the driver's photo from the FastAPI endpoint
-      const photoResponse = await axios.get(`http://localhost:8000/driver_photo/${driver.id}`, {
+      const photoResponse = await axios.get(`https://localhost:8000/driver_photo/${driver.id}`, {
         responseType: 'blob',
+        withCredentials: true,
       });
       const photoUrl = URL.createObjectURL(photoResponse.data);
       setDriverPhoto(photoUrl);

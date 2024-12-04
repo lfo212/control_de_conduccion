@@ -7,3 +7,4 @@ test_scripts
 eventos
 drivers_api/photos
 *.db
+*.pem

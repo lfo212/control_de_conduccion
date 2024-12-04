@@ -13,7 +13,7 @@ const Root = () => {
     // Check authentication status with the backend
     const checkAuth = async () => {
       try {
-        const response = await fetch('http://localhost:8000/validate-token', {
+        const response = await fetch('https://localhost:8000/api/validate-token', {
           method: 'GET',
           credentials: 'include', // Include cookies in the request
         });

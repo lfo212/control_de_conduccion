@@ -9,7 +9,9 @@ const DeleteDriver = () => {
   useEffect(() => {
     const fetchDrivers = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/drivers_list/');
+        const response = await axios.get('https://localhost:8000/drivers_list/', {
+          withCredentials: true,  // Include cookies (including authToken)
+        });
         setDrivers(response.data);
       } catch (error) {
         setError('Error obteniendo los conductores.');
@@ -21,7 +23,9 @@ const DeleteDriver = () => {
 
   const handleDeleteDriver = async (driverId) => {
     try {
-      await axios.delete(`http://localhost:8000/delete_driver/${driverId}`);
+      await axios.delete(`https://localhost:8000/delete_driver/${driverId}`, {
+        withCredentials: true,  // Include cookies (including authToken)
+      });
       setMessage('Conductor eliminado correctamente');
       setError('');
       setDrivers(drivers.filter(driver => driver.id !== driverId));
@@ -33,7 +37,9 @@ const DeleteDriver = () => {
 
   const handleDeleteAllDrivers = async () => {
     try {
-      await axios.delete('http://localhost:8000/delete_all_drivers');
+      await axios.delete('https://localhost:8000/delete_all_drivers', {
+        withCredentials: true,  // Include cookies (including authToken)
+      });
       setMessage('Todos los conductores eliminados correctamente.');
       setError('');
       setDrivers([]);

@@ -2,7 +2,7 @@ from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, Res
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from drivers import Driver, DriverModel, Base, LoginRequest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -19,7 +19,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5000"],
+    allow_origins=["http://127.0.0.1:5000", "http://localhost:5000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -32,12 +32,18 @@ def get_db():
     finally:
         db.close()
 
+def validate_token(authToken: Optional[str] = Cookie(None)):
+    if authToken != SECRET_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return True  # Return something useful if needed
+
 @app.post("/register_driver/", response_model=Driver)
 async def register_driver(
     driver_name: str = Form(...),
     driver_id: str = Form(...),
     photo: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    auth: bool = Depends(validate_token)
 ):
     photo_path = f"photos/{driver_id}.jpg"
     with open(photo_path, "wb") as buffer:
@@ -60,13 +66,18 @@ async def register_driver(
 def drivers_list(
     skip: int = 0,
     limit: int = 10,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    auth: bool = Depends(validate_token)
 ):
     drivers = db.query(DriverModel).offset(skip).limit(limit).all()
     return drivers
 
 @app.get("/driver_photo/{driver_id}")
-def get_driver_photo(driver_id: int, db: Session = Depends(get_db)):
+def get_driver_photo(
+    driver_id: int, 
+    db: Session = Depends(get_db), 
+    auth: bool = Depends(validate_token)
+):
     driver = db.query(DriverModel).filter(DriverModel.id == driver_id).first()
     if driver is None:
         raise HTTPException(status_code=404, detail="Driver not found")
@@ -77,7 +88,11 @@ def get_driver_photo(driver_id: int, db: Session = Depends(get_db)):
     return StreamingResponse(io.BytesIO(driver.photo), media_type="image/jpeg")
 
 @app.delete("/delete_driver/{driver_id}")
-def delete_driver(driver_id: int, db: Session = Depends(get_db)):
+def delete_driver(
+    driver_id: int, 
+    db: Session = Depends(get_db),
+    auth: bool = Depends(validate_token)
+):
     driver = db.query(DriverModel).filter(DriverModel.id == driver_id).first()
     if not driver:
         raise HTTPException(status_code=404, detail="Conductor no encontrado")
@@ -86,7 +101,7 @@ def delete_driver(driver_id: int, db: Session = Depends(get_db)):
     return {"message": "Conductor eliminado con exito"}
 
 @app.delete("/delete_all_drivers")
-def delete_all_drivers(db: Session = Depends(get_db)):
+def delete_all_drivers(db: Session = Depends(get_db), auth: bool = Depends(validate_token)):
     db.query(DriverModel).delete()
     db.commit()
     return {"message": "Todos los conductores eliminados con exito"}
@@ -98,9 +113,10 @@ def login(response: Response, request: LoginRequest):
             key="authToken",
             value=SECRET_TOKEN,
             httponly=True,
-            secure=False,
+            secure=True,
             samesite="None",
             max_age=3600,
+            path="/",
         )
         return {"message": "Login successful"}
     raise HTTPException(status_code=401, detail="Invalid credentials")
